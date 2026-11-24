@@ -52,7 +52,10 @@
       lastExtractedFaceVec: null,
       lastExtractedFaceEngine: '',
       faceApiReady: false,
-      faceApiLoading: false
+      faceApiLoading: false,
+      liveCamScanTimer: null,
+      liveCamAutoInFlight: false,
+      liveCamAutoSubmitted: false
     };
 
     /* -------------------------------------------------------------------
@@ -1364,6 +1367,8 @@
       document.getElementById('mobile-overflow-drawer').classList.add('hidden');
       if (tabId === 'kamera') {
         loadFaceApiLibrary();
+      } else {
+        stopLiveCamStream();
       }
       renderMobileShell();
     }
@@ -7759,8 +7764,145 @@
       }
     }
 
-    function handleFaceDescriptorExtracted(descResult, photoTag) {
+    function clearLiveCamScanTimer() {
+      if (AppCache.liveCamScanTimer) {
+        clearInterval(AppCache.liveCamScanTimer);
+        AppCache.liveCamScanTimer = null;
+      }
+      AppCache.liveCamAutoInFlight = false;
+    }
+
+    function stopLiveCamStream() {
+      clearLiveCamScanTimer();
+      var video = document.getElementById('cam-video-stream');
+      if (video && video.srcObject) {
+        try {
+          var tracks = video.srcObject.getTracks();
+          for (var i = 0; i < tracks.length; i++) tracks[i].stop();
+        } catch (e) {}
+        video.srcObject = null;
+      }
+      if (video) video.classList.add('hidden');
+    }
+
+    function captureLiveCamSnapshotToPreview(videoEl) {
+      try {
+        var imgEl = document.getElementById('cam-captured-preview');
+        if (!videoEl || !imgEl || !videoEl.videoWidth) return;
+        var snapCvs = document.createElement('canvas');
+        snapCvs.width = videoEl.videoWidth || 320;
+        snapCvs.height = videoEl.videoHeight || 320;
+        snapCvs.getContext('2d').drawImage(videoEl, 0, 0, snapCvs.width, snapCvs.height);
+        imgEl.src = snapCvs.toDataURL('image/jpeg', 0.85);
+        imgEl.classList.remove('hidden');
+      } catch (e) {}
+    }
+
+    function executeSubmitPresensi(btn, opts) {
+      var curU = AppCache.currentUser;
+      if (!curU) return false;
+      var curPeg = (AppCache.pegawai || []).filter(function (p) { return curU && p.nip === curU.nip; })[0] || curU;
+      var isEnrolled = !!(curPeg && (curPeg.hasFaceEnrolled || (curPeg.faceDescriptor && String(curPeg.faceDescriptor).length > 20)));
+      if (!isEnrolled) {
+        showToast('Wajah Anda belum terdaftar! Klik "Pindai Wajah Saya (AI)" atau ambil foto lalu klik "Simpan Sebagai Wajah Referensi Saya" terlebih dahulu.', 'warning');
+        return false;
+      }
+      if (!AppCache.faceVerified) {
+        showToast('Verifikasi Wajah (Face Recognition) wajib lulus & cocok sebelum mengirim presensi!', 'error');
+        return false;
+      }
+      var geoCfg = (AppCache.settings.GEOFENCE_COORDINATES && AppCache.settings.GEOFENCE_COORDINATES.value) || { maxGpsAccuracyMeter: 50 };
+      var maxAcc = geoCfg.maxGpsAccuracyMeter || 50;
+      var curAcc = Number(AppCache.lastGpsAccuracy || 8);
+      if (curAcc > maxAcc) {
+        if (opts && opts.fromAutoCam) stopLiveCamStream();
+        showToast('Sinyal GPS Lemah (Akurasi ' + Math.round(curAcc) + 'm > ' + maxAcc + 'm). Silakan pindah ke area terbuka.', 'error');
+        return false;
+      }
+      var coords = document.getElementById('mob-gps-preset').value.split(',');
+      var ket = document.getElementById('cam-keterangan-input').value;
+      var absenPayload = {
+        nip: AppCache.currentUser.nip,
+        modeKerja: AppCache.selectedModeKerja,
+        jenisAbsen: AppCache.selectedJenisAbsen,
+        lat: parseFloat(coords[0]),
+        lng: parseFloat(coords[1]),
+        accuracy: curAcc,
+        fotoData: AppCache.capturedFotoData,
+        keterangan: ket,
+        faceVerified: AppCache.faceVerified,
+        faceScore: AppCache.faceMatchScore
+      };
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        var qLen = enqueueOfflinePresensi(absenPayload);
+        stopLiveCamStream();
+        showToast('Koneksi terputus: Presensi Disimpan Offline (' + qLen + ' Antrean). Otomatis tersinkron saat online.', 'warning');
+        switchMobTab('beranda');
+        return true;
+      }
+      callServer('apiSubmitPresensi', absenPayload, btn, function (res) {
+        if (AppCache.selectedJenisAbsen === 'PULANG') {
+          AppCache.presensi = AppCache.presensi.map(function (p) { return p.id === res.record.id ? res.record : p; });
+        } else {
+          AppCache.presensi.unshift(res.record);
+        }
+        stopLiveCamStream();
+        showToast(res.message, 'success');
+        switchMobTab('beranda');
+      }, function () {
+        if (opts && opts.fromAutoCam) stopLiveCamStream();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          var qLen2 = enqueueOfflinePresensi(absenPayload);
+          showToast('Presensi Disimpan Offline (' + qLen2 + ' Antrean).', 'warning');
+          switchMobTab('beranda');
+        }
+      });
+      return true;
+    }
+
+    function startLiveCamAutoScan() {
+      clearLiveCamScanTimer();
+      AppCache.liveCamAutoSubmitted = false;
+      AppCache.liveCamAutoInFlight = false;
+      var video = document.getElementById('cam-video-stream');
       var badgeEl = document.getElementById('cam-liveness-badge');
+
+      AppCache.liveCamScanTimer = setInterval(function () {
+        if (!video || video.classList.contains('hidden') || !video.srcObject || AppCache.activeMobTab !== 'kamera') {
+          clearLiveCamScanTimer();
+          return;
+        }
+        if (AppCache.liveCamAutoSubmitted || AppCache.liveCamAutoInFlight) return;
+        if (AppCache.faceApiLoading) {
+          if (badgeEl) badgeEl.textContent = 'Memuat AI Face-ID...';
+          return;
+        }
+        if (video.readyState < 2 || !video.videoWidth) return;
+
+        AppCache.liveCamAutoInFlight = true;
+        var scanCvs = document.createElement('canvas');
+        scanCvs.width = Math.min(360, video.videoWidth || 320);
+        scanCvs.height = Math.min(360, video.videoHeight || 320);
+        scanCvs.getContext('2d').drawImage(video, 0, 0, scanCvs.width, scanCvs.height);
+
+        analyzeCapturedFaceImage(scanCvs, function (resDesc) {
+          AppCache.liveCamAutoInFlight = false;
+          if (!AppCache.liveCamScanTimer || AppCache.liveCamAutoSubmitted) return;
+          if (!resDesc || !resDesc.ok) {
+            if (badgeEl) {
+              badgeEl.className = 'text-cyan-300';
+              badgeEl.textContent = 'Arahkan Wajah ke Bingkai Oval...';
+            }
+            return;
+          }
+          handleFaceDescriptorExtracted(resDesc, 'LIVE_CAM_AUTO_' + Date.now(), { fromAutoCam: true, videoEl: video });
+        });
+      }, 900);
+    }
+
+    function handleFaceDescriptorExtracted(descResult, photoTag, opts) {
+      var badgeEl = document.getElementById('cam-liveness-badge');
+      var isAutoCam = !!(opts && opts.fromAutoCam);
       if (!descResult || !descResult.ok) {
         AppCache.faceVerified = false;
         AppCache.faceMatchScore = 0;
@@ -7771,7 +7913,7 @@
         }
         drawFaceOverlayBox(false, 0, 'WAJAH TIDAK TERDETEKSI');
         renderFaceStatusCard();
-        showToast((descResult && descResult.error) || 'Wajah tidak terdeteksi.', 'warning');
+        if (!isAutoCam) showToast((descResult && descResult.error) || 'Wajah tidak terdeteksi.', 'warning');
         return;
       }
 
@@ -7786,6 +7928,10 @@
       if (!hasEnrolled) {
         AppCache.faceVerified = false;
         AppCache.faceMatchScore = 100;
+        if (isAutoCam) {
+          clearLiveCamScanTimer();
+          captureLiveCamSnapshotToPreview(opts.videoEl);
+        }
         if (badgeEl) {
           badgeEl.className = 'text-amber-300 font-bold';
           badgeEl.textContent = 'Siap Registrasi Face ID';
@@ -7805,11 +7951,21 @@
       if (cmp.matched) {
         if (badgeEl) {
           badgeEl.className = 'text-emerald-300 font-bold';
-          badgeEl.textContent = 'Face ID Cocok (' + cmp.score + '%)';
+          badgeEl.textContent = isAutoCam ? ('Cocok ' + cmp.score + '% • Mengirim Absen...') : ('Face ID Cocok (' + cmp.score + '%)');
         }
         drawFaceOverlayBox(true, cmp.score, 'FACE ID COCOK: ' + cmp.score + '%');
         renderFaceStatusCard();
-        showToast('Verifikasi Wajah Berhasil: Cocok ' + cmp.score + '% dengan profil ' + peg.nama + '.', 'success');
+        if (isAutoCam) {
+          AppCache.liveCamAutoSubmitted = true;
+          clearLiveCamScanTimer();
+          captureLiveCamSnapshotToPreview(opts.videoEl);
+          showToast('Wajah cocok (' + cmp.score + '%). Mengirim presensi otomatis...', 'success');
+          setTimeout(function () {
+            executeSubmitPresensi(document.getElementById('btn-submit-presensi'), { fromAutoCam: true });
+          }, 500);
+        } else {
+          showToast('Verifikasi Wajah Berhasil: Cocok ' + cmp.score + '% dengan profil ' + peg.nama + '.', 'success');
+        }
       } else {
         if (badgeEl) {
           badgeEl.className = 'text-red-400 font-bold';
@@ -7817,7 +7973,9 @@
         }
         drawFaceOverlayBox(false, cmp.score, 'WAJAH TIDAK COCOK: ' + cmp.score + '%');
         renderFaceStatusCard();
-        showToast('Verifikasi Wajah Ditolak! Kemiripan hanya ' + cmp.score + '% (Tidak sesuai dengan Face ID ' + peg.nama + ').', 'error');
+        if (!isAutoCam) {
+          showToast('Verifikasi Wajah Ditolak! Kemiripan hanya ' + cmp.score + '% (Tidak sesuai dengan Face ID ' + peg.nama + ').', 'error');
+        }
       }
     }
 
@@ -9039,6 +9197,7 @@
           errBox.classList.add('flex');
         });
       } else if (action === 'logout') {
+        stopLiveCamStream();
         AppCache.currentUser = null;
         showShell('login');
         applySavedDeviceNIP();
@@ -9047,6 +9206,7 @@
         showShell('mobile');
         switchMobTab('beranda');
       } else if (action === 'switch-to-desktop') {
+        stopLiveCamStream();
         showShell('desktop');
         switchDeskMenu(AppCache.activeDeskMenu || 'dasbor-utama');
       } else if (action === 'toggle-sidebar') {
@@ -9079,6 +9239,7 @@
         }
       } else if (action === 'start-webcam') {
         loadFaceApiLibrary();
+        stopLiveCamStream();
         var video = document.getElementById('cam-video-stream');
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
           navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } }).then(function (stream) {
@@ -9086,10 +9247,15 @@
             video.classList.remove('hidden');
             document.getElementById('cam-captured-preview').classList.add('hidden');
             document.getElementById('cam-placeholder').classList.add('hidden');
-            document.getElementById('cam-liveness-badge').textContent = 'Kamera Live Aktif • Klik Shutter';
-            showToast('Kamera Live aktif. Posisikan wajah lalu tekan tombol Shutter Kamera di tengah.', 'info');
+            var badge = document.getElementById('cam-liveness-badge');
+            if (badge) {
+              badge.className = 'text-cyan-300';
+              badge.textContent = 'Live Cam Aktif • Auto-Scan Wajah';
+            }
+            showToast('Kamera Live aktif. Arahkan wajah ke bingkai oval untuk absen otomatis.', 'info');
+            startLiveCamAutoScan();
           }).catch(function () {
-            showToast('Kamera live dibatasi izin iframe browser. Gunakan tombol Kamera HP atau Pindai Wajah Saya (AI).', 'warn');
+            showToast('Kamera live dibatasi izin browser. Gunakan tombol Kamera HP atau Pindai Wajah Saya (AI).', 'warn');
           });
         } else {
           showToast('Gunakan tombol Kamera HP atau Pindai Wajah Saya (AI).', 'warn');
@@ -9098,6 +9264,7 @@
         var videoEl = document.getElementById('cam-video-stream');
         var imgEl = document.getElementById('cam-captured-preview');
         if (videoEl && !videoEl.classList.contains('hidden') && videoEl.srcObject) {
+          clearLiveCamScanTimer();
           var snapCvs = document.createElement('canvas');
           snapCvs.width = videoEl.videoWidth || 320;
           snapCvs.height = videoEl.videoHeight || 320;
@@ -9137,59 +9304,7 @@
       } else if (action === 'sync-offline-presensi') {
         syncOfflinePresensiQueue();
       } else if (action === 'submit-presensi') {
-        var curU = AppCache.currentUser;
-        var curPeg = (AppCache.pegawai || []).filter(function (p) { return curU && p.nip === curU.nip; })[0] || curU;
-        var isEnrolled = !!(curPeg && (curPeg.hasFaceEnrolled || (curPeg.faceDescriptor && String(curPeg.faceDescriptor).length > 20)));
-        if (!isEnrolled) {
-          showToast('Wajah Anda belum terdaftar! Klik "Pindai Wajah Saya (AI)" atau ambil foto lalu klik "Simpan Sebagai Wajah Referensi Saya" terlebih dahulu.', 'warning');
-          return;
-        }
-        if (!AppCache.faceVerified) {
-          showToast('Verifikasi Wajah (Face Recognition) wajib lulus & cocok sebelum mengirim presensi!', 'error');
-          return;
-        }
-        var geoCfg = (AppCache.settings.GEOFENCE_COORDINATES && AppCache.settings.GEOFENCE_COORDINATES.value) || { maxGpsAccuracyMeter: 50 };
-        var maxAcc = geoCfg.maxGpsAccuracyMeter || 50;
-        var curAcc = Number(AppCache.lastGpsAccuracy || 8);
-        if (curAcc > maxAcc) {
-          showToast('Sinyal GPS Lemah (Akurasi ' + Math.round(curAcc) + 'm > ' + maxAcc + 'm). Silakan pindah ke area terbuka.', 'error');
-          return;
-        }
-        var coords = document.getElementById('mob-gps-preset').value.split(',');
-        var ket = document.getElementById('cam-keterangan-input').value;
-        var absenPayload = {
-          nip: AppCache.currentUser.nip,
-          modeKerja: AppCache.selectedModeKerja,
-          jenisAbsen: AppCache.selectedJenisAbsen,
-          lat: parseFloat(coords[0]),
-          lng: parseFloat(coords[1]),
-          accuracy: curAcc,
-          fotoData: AppCache.capturedFotoData,
-          keterangan: ket,
-          faceVerified: AppCache.faceVerified,
-          faceScore: AppCache.faceMatchScore
-        };
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-          var qLen = enqueueOfflinePresensi(absenPayload);
-          showToast('Koneksi terputus: Presensi Disimpan Offline (' + qLen + ' Antrean). Otomatis tersinkron saat online.', 'warning');
-          switchMobTab('beranda');
-          return;
-        }
-        callServer('apiSubmitPresensi', absenPayload, btn, function (res) {
-          if (AppCache.selectedJenisAbsen === 'PULANG') {
-            AppCache.presensi = AppCache.presensi.map(function (p) { return p.id === res.record.id ? res.record : p; });
-          } else {
-            AppCache.presensi.unshift(res.record);
-          }
-          showToast(res.message, 'success');
-          switchMobTab('beranda');
-        }, function () {
-          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            var qLen2 = enqueueOfflinePresensi(absenPayload);
-            showToast('Presensi Disimpan Offline (' + qLen2 + ' Antrean).', 'warning');
-            switchMobTab('beranda');
-          }
-        });
+        executeSubmitPresensi(btn);
       } else if (action === 'refresh-all') {
         callServer('apiGetInitialBundle', undefined, btn, function (res) {
           AppCache.settings = res.settings || {};

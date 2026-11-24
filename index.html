@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>E-Presensi BKAD Kab. Teluk Wondama</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Proteksi Dini Iframe Google Apps Script: Cegah native form submit navigasi halaman putih
+    window.addEventListener('submit', function (e) {
+      e.preventDefault();
+    }, true);
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'navy-deep': '#0B3D91',
+              'primary': '#002869',
+              'electric-blue': '#1E6BFF',
+              'mode-wfa': '#0D9488',
+              'canvas-bg': '#F3F6FB',
+              'surface-white': '#FFFFFF',
+              'surface-low': '#F1F4F9',
+              'surface-high': '#E5E8ED',
+              'status-present': '#16A34A',
+              'status-late': '#F5A623',
+              'status-absent': '#EF4444',
+              'status-tracking': '#7C5CFC',
+              'text-main': '#0F172A',
+              'text-muted': '#64748B',
+              'border-subtle': '#E2E8F0'
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace']
+            }
+          }
+        }
+      };
+    }
+  </script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body class="bg-canvas-bg text-text-main antialiased min-h-screen">
+
+  <!-- TOAST NOTIFICATION CONTAINER (Anti-Alert Browser) -->
+  <div id="toast-container"
+    class="fixed top-4 right-4 z-[120] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 1: PORTAL LOGIN RESMI E-PRESENSI BKAD TELUK WONDAMA                -->
+  <!-- ======================================================================= -->
+  <section id="view-login"
+    class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-[#EBF2FA] via-[#EFF5FC] to-canvas-bg relative overflow-hidden">
+    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-electric-blue/10 blur-3xl pointer-events-none">
+    </div>
+    <div
+      class="absolute -bottom-36 -right-28 w-[26rem] h-[26rem] rounded-full bg-navy-deep/10 blur-3xl pointer-events-none">
+    </div>
+
+    <!-- Live Server Clock Pill -->
+    <div
+      class="flex items-center gap-2.5 bg-surface-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-border-subtle mb-5 relative z-10">
+      <span class="relative flex h-2.5 w-2.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-present opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-present"></span>
+      </span>
+      <span class="font-mono text-[11px] text-text-muted uppercase tracking-wide">SERVER WIT (UTC+9) • ONLINE</span>
+      <span id="login-clock" class="font-mono text-[12px] font-bold text-navy-deep">--:--:-- WIT</span>
+    </div>
+
+    <div
+      class="w-full max-w-[460px] bg-surface-white rounded-2xl shadow-xl border border-border-subtle p-6 sm:p-8 relative z-10">
+      <!-- Lambang & Judul Instansi -->
+      <div class="flex flex-col items-center text-center mb-6">
+        <div class="w-16 h-16 rounded-2xl bg-navy-deep text-white flex items-center justify-center shadow-md mb-3">
+          <svg class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+        </div>
+        <span
+          class="px-3 py-0.5 rounded-full bg-blue-50 text-navy-deep text-[11px] font-semibold uppercase tracking-wider mb-1.5">
+          Sistem Absensi Digital ASN
+        </span>
+        <h1 class="text-2xl sm:text-[26px] font-bold text-navy-deep tracking-tight">E-Presensi BKAD</h1>
+        <p class="text-xs sm:text-sm text-text-muted mt-0.5">Kabupaten Teluk Wondama, Provinsi Papua Barat</p>
+      </div>
+
+      <!-- Form Login -->
+      <form id="login-form" action="javascript:void(0);" autocomplete="off" class="space-y-4">
+        <!-- Banner Identitas Perangkat (Per-Device NIP Binding) -->
+        <div id="saved-device-banner"
+          class="hidden p-3 rounded-xl bg-blue-50 border border-electric-blue/30 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-electric-blue">NIP Tersimpan di Perangkat
+              Ini</div>
+            <div id="saved-device-name" class="text-xs font-bold text-navy-deep truncate">-</div>
+          </div>
+          <button type="button" data-action="clear-saved-nip"
+            class="px-2.5 py-1 rounded-lg bg-white border border-border-subtle hover:bg-red-50 text-status-absent text-[11px] font-semibold shrink-0 transition-smooth">
+            Ganti Pegawai
+          </button>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label for="login-nip" class="text-xs font-semibold text-navy-deep uppercase tracking-wide">Nomor Induk
+              Pegawai (NIP)</label>
+            <span class="font-mono text-[11px] text-text-muted">18 Digit NIP Anda</span>
+          </div>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3.5 top-2.5 text-text-muted text-[20px]">badge</span>
+            <input id="login-nip" type="text" maxlength="21" value="" autocomplete="off"
+              placeholder="Masukkan 18 digit NIP Anda" required
+              class="w-full h-11 pl-11 pr-4 bg-surface-low hover:bg-surface-high/60 focus:bg-white rounded-xl font-mono text-sm text-navy-deep border border-border-subtle focus:outline-none focus:ring-2 focus:ring-electric-blue transition-smooth" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label for="login-pin" class="text-xs font-semibold text-navy-deep uppercase tracking-wide">Kode PIN
+              Presensi</label>
+          </div>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3.5 top-2.5 text-text-muted text-[20px]">lock</span>
+            <input id="login-pin" type="password" inputmode="numeric" maxlength="6" value="" autocomplete="new-password"
+              placeholder="••••••" required
+              class="w-full h-11 pl-11 pr-11 bg-surface-low hover:bg-surface-high/60 focus:bg-white rounded-xl font-mono text-sm text-navy-deep tracking-widest border border-border-subtle focus:outline-none focus:ring-2 focus:ring-electric-blue transition-smooth" />
+            <button type="button" id="btn-toggle-pin" aria-label="Tampilkan atau sembunyikan PIN"
+              class="absolute right-2.5 top-2 p-1.5 rounded-lg text-text-muted hover:text-navy-deep transition-smooth">
+              <span id="icon-toggle-pin" class="material-symbols-outlined text-[20px]">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
+          <input id="login-remember-nip" type="checkbox" checked
+            class="w-4 h-4 rounded border-border-subtle text-electric-blue focus:ring-electric-blue" />
+          <span>Ingat NIP saya di perangkat ini (agar langsung tampil saat absen)</span>
+        </label>
+
+        <div id="login-error-box"
+          class="hidden items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-status-absent text-xs">
+          <span class="material-symbols-outlined text-[18px] shrink-0">error</span>
+          <span id="login-error-msg"></span>
+        </div>
+
+        <button id="btn-login-submit" type="submit"
+          class="w-full h-11 bg-electric-blue hover:bg-navy-deep text-white font-semibold text-sm rounded-xl shadow-md shadow-electric-blue/20 flex items-center justify-center gap-2 transition-smooth active:scale-[0.99]">
+          <span>Masuk ke Aplikasi</span>
+          <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+
+        <button type="button" data-action="quick-login-mobile"
+          class="w-full py-2.5 bg-surface-low hover:bg-surface-high text-navy-deep font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-smooth border border-border-subtle">
+          <span class="material-symbols-outlined text-[18px] text-electric-blue">center_focus_strong</span>
+          <span>Langsung ke Kamera Presensi (Sesuai NIP Anda)</span>
+        </button>
+      </form>
+
+      <!-- Pilih Cepat Peran Simulasi / Demo (Dilipat agar Pegawai tidak salah tekan) -->
+      <details class="mt-5 pt-4 border-t border-border-subtle">
+        <summary
+          class="text-[11px] font-semibold text-text-muted uppercase tracking-wider cursor-pointer select-none hover:text-navy-deep">
+          Mode Uji Coba / Simulasi Peran (Khusus Admin)
+        </summary>
+        <div class="grid grid-cols-2 gap-2 mt-3">
+          <button type="button" data-action="role-preset" data-id="198001102006041001"
+            class="px-2.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-navy-deep text-[11px] font-semibold text-left flex items-center gap-1.5 transition-smooth">
+            <span class="material-symbols-outlined text-[15px] text-electric-blue">admin_panel_settings</span>
+            <span>Super Admin BKAD</span>
+          </button>
+          <button type="button" data-action="role-preset" data-id="198503122010011002"
+            class="px-2.5 py-2 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 text-[11px] font-semibold text-left flex items-center gap-1.5 transition-smooth">
+            <span class="material-symbols-outlined text-[15px] text-mode-wfa">smartphone</span>
+            <span>Pegawai ASN (Mobile)</span>
+          </button>
+          <button type="button" data-action="role-preset" data-id="198802142008021001"
+            class="px-2.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold text-left flex items-center gap-1.5 transition-smooth">
+            <span class="material-symbols-outlined text-[15px] text-amber-600">rate_review</span>
+            <span>Kasubid (Tahap 1)</span>
+          </button>
+          <button type="button" data-action="role-preset" data-id="198106222007011002"
+            class="px-2.5 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 text-[11px] font-semibold text-left flex items-center gap-1.5 transition-smooth">
+            <span class="material-symbols-outlined text-[15px] text-status-tracking">fact_check</span>
+            <span>Kabid (Tahap 2)</span>
+          </button>
+          <button type="button" data-action="role-preset" data-id="197511282009091001"
+            class="col-span-2 px-2.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-smooth">
+            <span class="material-symbols-outlined text-[15px] text-status-present">verified</span>
+            <span>Kepala Badan BKAD (Pengesahan Final Tahap 3)</span>
+          </button>
+        </div>
+      </details>
+
+      <div class="mt-5 p-3 bg-surface-low rounded-xl flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-navy-deep/10 text-navy-deep flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px]">shield</span>
+        </div>
+        <p class="font-mono text-[11px] text-text-muted leading-snug">
+          Geo-Lock Rasiei (98362) • Waktu Server WIT (UTC+9) • Kepatuhan PP 94/2021
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 2: SHELL MOBILE PEGAWAI ASN (KAMERA GPS, PRESENSI, CUTI, SPT)      -->
+  <!-- ======================================================================= -->
+  <section id="shell-mobile" class="hidden min-h-screen flex-col bg-canvas-bg pb-24">
+    <!-- Mobile Top App Bar -->
+    <header class="fixed top-0 inset-x-0 z-40 bg-navy-deep text-white shadow-md">
+      <div class="h-14 px-4 flex items-center justify-between max-w-lg mx-auto">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="text-sm font-bold leading-none">E-Presensi BKAD</div>
+            <div class="font-mono text-[10px] text-blue-200 tracking-wider uppercase mt-0.5">Teluk Wondama • WIT</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" data-action="switch-to-desktop"
+            class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] font-semibold flex items-center gap-1 transition-smooth">
+            <span class="material-symbols-outlined text-[15px]">desktop_windows</span>
+            <span>Dasbor</span>
+          </button>
+          <button type="button" data-action="toggle-mobile-overflow" aria-label="Menu Lainnya"
+            class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-smooth">
+            <span class="material-symbols-outlined text-[20px]">more_vert</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Overflow Menu Drawer -->
+    <div id="mobile-overflow-drawer"
+      class="hidden fixed top-14 right-3 z-50 w-56 bg-white rounded-xl shadow-xl border border-border-subtle p-2">
+      <button type="button" data-action="mobile-tab" data-id="log"
+        class="w-full px-3 py-2 text-left text-xs font-semibold text-text-main hover:bg-surface-low rounded-lg flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px] text-electric-blue">history</span>
+        <span>Riwayat Log Absen</span>
+      </button>
+      <button type="button" data-action="refresh-all"
+        class="w-full px-3 py-2 text-left text-xs font-semibold text-text-main hover:bg-surface-low rounded-lg flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px] text-status-present">sync</span>
+        <span>Refresh Data Server</span>
+      </button>
+      <button type="button" data-action="switch-to-desktop"
+        class="w-full px-3 py-2 text-left text-xs font-semibold text-text-main hover:bg-surface-low rounded-lg flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px] text-navy-deep">dashboard</span>
+        <span>Buka Mode Desktop Admin</span>
+      </button>
+      <button type="button" data-action="open-galeri-from-mobile"
+        class="w-full px-3 py-2 text-left text-xs font-semibold text-text-main hover:bg-surface-low rounded-lg flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px] text-status-tracking">collections_bookmark</span>
+        <span>Galeri 73 Dokumen UI</span>
+      </button>
+      <div class="my-1 border-t border-border-subtle"></div>
+      <button type="button" data-action="logout"
+        class="w-full px-3 py-2 text-left text-xs font-semibold text-status-absent hover:bg-red-50 rounded-lg flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">logout</span>
+        <span>Keluar Akun</span>
+      </button>
+    </div>
+
+    <main class="pt-14 w-full max-w-lg mx-auto flex-1">
+      <!-- TAB MOBILE 1: BERANDA PEGAWAI -->
+      <div id="mob-tab-beranda" class="space-y-4 pb-4">
+        <section class="bg-navy-deep text-white px-4 pt-3 pb-6 rounded-b-2xl shadow-md">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div id="mob-avatar"
+                class="w-12 h-12 rounded-full bg-electric-blue flex items-center justify-center text-white font-bold text-base shrink-0 ring-2 ring-white/30">
+                BS</div>
+              <div class="min-w-0">
+                <div class="text-xs text-blue-200">Selamat Bertugas,</div>
+                <h2 id="mob-user-nama" class="text-base font-bold leading-tight truncate">-</h2>
+                <div id="mob-user-nip" class="font-mono text-[11px] text-blue-200 mt-0.5 truncate">-</div>
+              </div>
+            </div>
+            <span id="mob-clock-badge"
+              class="font-mono text-xs font-bold bg-white/15 px-2.5 py-1 rounded-lg shrink-0">--:-- WIT</span>
+          </div>
+
+          <!-- Pilihan Mode Kerja ASN -->
+          <div class="mt-4 pt-3 border-t border-white/10">
+            <div class="text-[10px] uppercase tracking-wider text-blue-200 font-semibold mb-2">Pilihan Mode Kerja ASN
+              Aktif</div>
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1" id="mob-mode-pills">
+              <button type="button" data-action="set-work-mode" data-id="WFO"
+                class="mob-mode-btn px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-smooth bg-electric-blue text-white shadow-sm">
+                <span class="material-symbols-outlined text-[15px]">location_on</span>
+                <span>WFO (Kantor BKAD)</span>
+              </button>
+              <button type="button" data-action="set-work-mode" data-id="WFH"
+                class="mob-mode-btn px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-smooth bg-white/15 text-blue-100">
+                <span class="material-symbols-outlined text-[15px]">home_work</span>
+                <span>WFH (Rumah)</span>
+              </button>
+              <button type="button" data-action="set-work-mode" data-id="WFA"
+                class="mob-mode-btn px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-smooth bg-white/15 text-teal-100">
+                <span class="material-symbols-outlined text-[15px]">travel_explore</span>
+                <span>WFA (Dinas Lapangan)</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Kartu Jam & Aksi Presensi Utama -->
+        <div class="px-4 -mt-4">
+          <div class="card-elevated rounded-2xl p-4 text-center">
+            <div class="text-xs text-text-muted font-medium">Jam Kerja Resmi BKAD: <span
+                class="font-mono font-semibold text-navy-deep">08:00 – 16:00 WIT</span></div>
+            <div id="mob-big-clock" class="font-mono text-3xl font-bold text-navy-deep my-2 tracking-tight">--:--:--
+            </div>
+            <div id="mob-date-label" class="text-xs text-text-muted mb-4">-</div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" data-action="open-camera-absen" data-id="MASUK"
+                class="py-2.5 px-3 rounded-xl bg-electric-blue hover:bg-navy-deep text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                <span>Absen Masuk</span>
+              </button>
+              <button type="button" data-action="open-camera-absen" data-id="PULANG"
+                class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span>Absen Pulang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Ringkas Pegawai: WAJIB Grid 2 Kolom (Anti-Tumpuk Vertikal) -->
+        <div class="px-4">
+          <div id="mob-kpi-grid" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Riwayat Presensi Terbaru ASN -->
+        <div class="px-4">
+          <div class="card-elevated rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-text-main">Catatan Kehadiran Terbaru</h3>
+              <button type="button" data-action="mobile-tab" data-id="log"
+                class="text-xs font-semibold text-electric-blue">Lihat Semua</button>
+            </div>
+            <div id="mob-recent-logs" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB MOBILE 2: KAMERA PRESENSI GPS & BIOMETRIK WAJAH -->
+      <div id="mob-tab-kamera" class="hidden px-4 py-3 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <button type="button" id="btn-gps-detect" data-action="detect-gps"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-status-present text-white text-xs font-semibold shadow-sm transition-smooth active:scale-95">
+            <span class="material-symbols-outlined text-[16px]">satellite_alt</span>
+            <span id="mob-gps-label">Lokasi Terdeteksi (Akurasi: 8m)</span>
+          </button>
+          <select id="mob-gps-preset"
+            class="text-[11px] font-mono bg-white border border-border-subtle rounded-lg px-2 py-1.5 text-navy-deep">
+            <option value="-2.72381,134.50422">Kantor BKAD Rasiei (Dalam Radius)</option>
+            <option value="-2.46820,134.58190">Distrik Kep. Roon (Lokasi SPT)</option>
+            <option value="-2.81500,134.61000">Luar Zona Kantor (Uji Geo-Lock)</option>
+          </select>
+        </div>
+
+        <div
+          class="px-3 py-2 rounded-xl bg-white border border-border-subtle flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-electric-blue animate-ping"></span>
+            <span class="font-semibold text-primary">Mode <span id="cam-mode-label">WFO</span> • <span
+                id="cam-jenis-label">MASUK</span></span>
+          </div>
+          <span id="cam-coord-mono" class="font-mono text-[11px] text-text-muted">-2.72381, 134.50422</span>
+        </div>
+
+        <!-- Status Biometrik Face Recognition (AI Face ID) -->
+        <div id="cam-face-status-card" class="card-elevated rounded-2xl p-3.5 space-y-2.5 border border-border-subtle">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-xl bg-blue-50 text-electric-blue flex items-center justify-center">
+                <span class="material-symbols-outlined text-[19px]">familiar_face_and_zone</span>
+              </span>
+              <div>
+                <div class="text-xs font-bold text-navy-deep">AI Face Recognition &amp; Liveness</div>
+                <div id="cam-face-engine-label" class="text-[10px] text-text-muted">Pencocokan Wajah 128-Titik Biometrik
+                </div>
+              </div>
+            </div>
+            <span id="cam-face-enroll-pill"
+              class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Mengecek
+              Profil...</span>
+          </div>
+          <div id="cam-face-verify-detail"
+            class="p-2.5 rounded-xl bg-surface-low border border-border-subtle text-[11px] text-text-muted">
+            Ambil swafoto melalui <b>Kamera HP</b>, <b>Live Cam</b>, atau klik tombol <b>Shutter Kamera</b> di bawah
+            untuk memindai dan mencocokkan wajah dengan NIP Anda.
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" id="btn-cam-enroll-face" data-action="enroll-current-face"
+              class="hidden px-3 py-1.5 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-[11px] font-semibold flex items-center gap-1 shadow-sm transition-smooth">
+              <span class="material-symbols-outlined text-[15px]">how_to_reg</span>
+              <span>Simpan Sebagai Wajah Referensi Saya</span>
+            </button>
+            <button type="button" data-action="simulate-face-scan"
+              class="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-[11px] font-semibold flex items-center gap-1 transition-smooth">
+              <span class="material-symbols-outlined text-[14px]">center_focus_strong</span>
+              <span>Pindai Wajah Saya (AI)</span>
+            </button>
+            <button type="button" data-action="simulate-face-mismatch"
+              class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-status-absent text-[11px] font-semibold flex items-center gap-1 transition-smooth">
+              <span class="material-symbols-outlined text-[14px]">person_off</span>
+              <span>Uji Wajah Orang Lain</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Viewfinder Kamera -->
+        <div
+          class="relative w-full aspect-[4/4] sm:aspect-[4/3] rounded-2xl overflow-hidden bg-slate-900 shadow-lg flex items-center justify-center">
+          <video id="cam-video-stream" autoplay playsinline muted
+            class="hidden absolute inset-0 w-full h-full object-cover"></video>
+          <img id="cam-captured-preview" alt="Pratinjau Wajah ASN"
+            class="hidden absolute inset-0 w-full h-full object-cover" />
+          <canvas id="cam-face-overlay-canvas" width="320" height="320"
+            class="hidden absolute inset-0 w-full h-full pointer-events-none"></canvas>
+          <div id="cam-placeholder" class="flex flex-col items-center justify-center text-white/80 p-6 text-center">
+            <span class="material-symbols-outlined text-[54px] text-cyan-300 mb-2">face</span>
+            <p class="text-xs font-medium">Posisikan wajah di dalam bingkai oval atau unggah foto kamera HP</p>
+          </div>
+          <!-- Liveness Laser Scan Beam -->
+          <div
+            class="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_2px_rgba(34,211,238,0.85)] pointer-events-none scan-beam-anim">
+          </div>
+          <!-- Oval Guideline SVG -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none p-8" viewBox="0 0 220 260" fill="none">
+            <ellipse cx="110" cy="130" rx="80" ry="105" stroke="#60A5FA" stroke-width="2.5" stroke-dasharray="8 6"
+              class="opacity-85"></ellipse>
+          </svg>
+          <div
+            class="absolute bottom-2.5 inset-x-3 px-3 py-1.5 rounded-xl bg-slate-900/80 backdrop-blur-md flex items-center justify-between text-white text-[11px] font-mono">
+            <span>Rasiei, Teluk Wondama</span>
+            <span id="cam-liveness-badge" class="text-cyan-300">Biometrik Siap</span>
+          </div>
+        </div>
+
+        <!-- Kontrol Kamera: Native File Capture + Web Camera + Shutter -->
+        <div class="flex items-center justify-around py-1">
+          <label
+            class="cursor-pointer flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-white border border-border-subtle text-navy-deep shadow-sm hover:bg-surface-low transition-smooth">
+            <span class="material-symbols-outlined text-[20px]">add_a_photo</span>
+            <span class="text-[10px] font-semibold">Kamera HP</span>
+            <input id="cam-native-input" type="file" accept="image/*" capture="user" class="hidden" />
+          </label>
+          <button type="button" id="btn-cam-shutter" data-action="capture-selfie"
+            class="w-16 h-16 rounded-full p-1 bg-white shadow-lg border-2 border-electric-blue/40 flex items-center justify-center active:scale-95 transition-smooth">
+            <div class="w-full h-full rounded-full bg-electric-blue text-white flex items-center justify-center">
+              <span class="material-symbols-outlined text-[28px]">photo_camera</span>
+            </div>
+          </button>
+          <button type="button" data-action="start-webcam"
+            class="flex flex-col items-center gap-1 px-3 py-2 rounded-xl bg-white border border-border-subtle text-navy-deep shadow-sm hover:bg-surface-low transition-smooth">
+            <span class="material-symbols-outlined text-[20px]">videocam</span>
+            <span class="text-[10px] font-semibold">Live Cam</span>
+          </button>
+        </div>
+
+        <!-- Konfirmasi Kirim Presensi -->
+        <div class="card-elevated rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-navy-deep">Konfirmasi Simpan Presensi</h3>
+            <span class="px-2 py-0.5 rounded-full bg-blue-50 text-navy-deep font-mono text-[11px] font-semibold">SK-BKAD
+              Valid</span>
+          </div>
+          <input id="cam-keterangan-input" type="text" placeholder="Catatan opsional (misal: Apel pagi / Lokasi SPT)"
+            class="w-full px-3 py-2 text-xs bg-surface-low rounded-xl border border-border-subtle focus:outline-none focus:ring-2 focus:ring-electric-blue" />
+          <button type="button" id="btn-submit-presensi" data-action="submit-presensi"
+            class="w-full py-3 rounded-xl bg-navy-deep hover:bg-primary text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md transition-smooth">
+            <span class="material-symbols-outlined text-[18px]">check_circle</span>
+            <span>Kirim Presensi Sekarang</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB MOBILE 3: PENGAJUAN IZIN & CUTI -->
+      <div id="mob-tab-izin" class="hidden px-4 py-3 space-y-4">
+        <div class="card-elevated rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-navy-deep mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-electric-blue text-[20px]">edit_document</span>
+            <span>Formulir Pengajuan Izin / Cuti</span>
+          </h3>
+          <form id="mob-izin-form" action="javascript:void(0);" class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Jenis Permohonan</label>
+              <select id="mob-izin-jenis"
+                class="w-full px-3 py-2 text-xs bg-surface-low rounded-xl border border-border-subtle focus:outline-none focus:ring-2 focus:ring-electric-blue">
+                <option value="Cuti Tahunan">Cuti Tahunan</option>
+                <option value="Izin Keluar Kota">Izin Keluar Kota</option>
+                <option value="Izin Sakit">Izin Sakit</option>
+                <option value="Cuti Alasan Penting">Cuti Alasan Penting</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Tgl Mulai</label>
+                <input id="mob-izin-mulai" type="date" required
+                  class="w-full px-3 py-2 text-xs bg-surface-low rounded-xl border border-border-subtle" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Tgl Selesai</label>
+                <input id="mob-izin-selesai" type="date" required
+                  class="w-full px-3 py-2 text-xs bg-surface-low rounded-xl border border-border-subtle" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Alasan Lengkap</label>
+              <textarea id="mob-izin-alasan" rows="2" required
+                placeholder="Contoh: Menghadiri wisuda keluarga di luar kota..."
+                class="w-full px-3 py-2 text-xs bg-surface-low rounded-xl border border-border-subtle"></textarea>
+            </div>
+            <button id="btn-mob-submit-izin" type="submit"
+              class="w-full py-2.5 rounded-xl bg-electric-blue hover:bg-navy-deep text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-smooth">
+              <span class="material-symbols-outlined text-[17px]">send</span>
+              <span>Kirim ke Atasan Langsung (Kasubid)</span>
+            </button>
+          </form>
+        </div>
+
+        <div class="card-elevated rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-navy-deep mb-3">Status & Pelacakan Berjenjang (3 Tahap)</h3>
+          <div id="mob-izin-list" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- TAB MOBILE 4: JADWAL SPT & LOG PRESENSI -->
+      <div id="mob-tab-log" class="hidden px-4 py-3 space-y-4">
+        <div class="card-elevated rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-navy-deep mb-2.5">Jadwal SPT & Penugasan Lapangan</h3>
+          <div id="mob-spt-list" class="space-y-2.5"></div>
+        </div>
+        <div class="card-elevated rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-navy-deep mb-2.5">Log Absensi Harian (Foto & GPS)</h3>
+          <div id="mob-full-logs" class="space-y-2.5"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar (Navbar + Overflow Button) -->
+    <nav
+      class="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-border-subtle shadow-[0_-4px_15px_rgba(0,0,0,0.05)]">
+      <div class="max-w-lg mx-auto grid grid-cols-5 h-16">
+        <button type="button" data-action="mobile-tab" data-id="beranda"
+          class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-electric-blue">
+          <span class="material-symbols-outlined text-[22px]">home</span>
+          <span class="text-[10px] font-semibold">Beranda</span>
+        </button>
+        <button type="button" data-action="mobile-tab" data-id="kamera"
+          class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-text-muted">
+          <span class="material-symbols-outlined text-[22px]">photo_camera</span>
+          <span class="text-[10px] font-semibold">Presensi</span>
+        </button>
+        <button type="button" data-action="mobile-tab" data-id="izin"
+          class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-text-muted">
+          <span class="material-symbols-outlined text-[22px]">event_available</span>
+          <span class="text-[10px] font-semibold">Izin/Cuti</span>
+        </button>
+        <button type="button" data-action="mobile-tab" data-id="log"
+          class="mob-nav-btn flex flex-col items-center justify-center gap-0.5 text-text-muted">
+          <span class="material-symbols-outlined text-[22px]">assignment</span>
+          <span class="text-[10px] font-semibold">SPT & Log</span>
+        </button>
+        <button type="button" data-action="toggle-mobile-overflow"
+          class="flex flex-col items-center justify-center gap-0.5 text-text-muted">
+          <span class="material-symbols-outlined text-[22px]">menu</span>
+          <span class="text-[10px] font-semibold">Lainnya</span>
+        </button>
+      </div>
+    </nav>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- VIEW 3: SHELL DESKTOP ADMIN & PEJABAT PENELAAH                          -->
+  <!-- ======================================================================= -->
+  <section id="shell-desktop" class="hidden min-h-screen flex">
+    <!-- Backdrop Mobile Sidebar Drawer -->
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-slate-900/50 z-40 lg:hidden"></div>
+
+    <!-- Sidebar Navy Deep -->
+    <aside id="desktop-sidebar"
+      class="fixed left-0 top-0 bottom-0 w-64 bg-navy-deep text-white z-50 flex flex-col justify-between shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+      <div class="flex flex-col flex-1 overflow-y-auto no-scrollbar">
+        <div class="flex items-center gap-3 px-4 py-5 border-b border-white/10">
+          <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="text-sm font-bold tracking-tight truncate">E-PRESENSI BKAD</div>
+            <div class="text-[11px] text-blue-200 truncate">Kab. Teluk Wondama</div>
+          </div>
+        </div>
+
+        <nav class="flex-1 px-2.5 py-4 space-y-1">
+          <button type="button" data-action="desk-menu" data-id="dasbor-utama"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-electric-blue text-white shadow-md transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">grid_view</span>
+            <span>Dasbor Utama</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="master-skpd"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">account_balance</span>
+            <span>Master SKPD &amp; Sub Unit</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="impor-pegawai"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">group_add</span>
+            <span>Master & Impor Pegawai</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="rekonsiliasi-absen"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">rule_folder</span>
+            <span>Rekonsiliasi & TPP</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="jadwal-mode-kerja"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">schedule</span>
+            <span>Mode Kerja & SPT GPS</span>
+          </button>
+
+          <div class="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-blue-300/80">Layanan &
+            Statistik</div>
+          <button type="button" data-action="desk-menu" data-id="persetujuan-izin"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">approval_delegation</span>
+            <span>Persetujuan Izin & Cuti</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="rekap-presensi"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">calendar_month</span>
+            <span>Rekapitulasi Presensi</span>
+          </button>
+
+          <div class="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-blue-300/80">Kepatuhan & Sistem
+          </div>
+          <button type="button" data-action="desk-menu" data-id="disiplin-pegawai"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">gavel</span>
+            <span>Disiplin PP 94/2021</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="pengaturan-sistem"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">settings</span>
+            <span>Pengaturan Sistem</span>
+          </button>
+          <button type="button" data-action="desk-menu" data-id="galeri-stitch"
+            class="desk-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-white/80 hover:bg-white/10 hover:text-white transition-smooth">
+            <span class="material-symbols-outlined text-[19px]">collections_bookmark</span>
+            <span>Galeri 73 Dokumen UI</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Status Server & Geo-Lock Pod -->
+      <div class="p-3.5 m-3 rounded-xl bg-primary/80 border border-white/10 space-y-1.5">
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2.5 w-2.5">
+            <span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-present opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-present"></span>
+          </span>
+          <span class="text-[11px] font-semibold">Server Pemkab Terhubung</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-blue-200 font-mono text-[10px]">
+          <span class="material-symbols-outlined text-[14px]">pin_drop</span>
+          <span>WIT Geo-Lock (Isei 98362)</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Desktop Canvas -->
+    <div class="flex-1 lg:pl-64 flex flex-col min-w-0">
+      <!-- Top Header -->
+      <header
+        class="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-md border-b border-border-subtle px-4 sm:px-6 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 flex-1 max-w-md">
+          <button type="button" data-action="toggle-sidebar"
+            class="lg:hidden p-2 rounded-lg text-navy-deep hover:bg-surface-low">
+            <span class="material-symbols-outlined text-[22px]">menu</span>
+          </button>
+          <div class="relative flex-1">
+            <span class="material-symbols-outlined absolute left-3 top-2.5 text-text-muted text-[18px]">search</span>
+            <input id="global-search-input" type="text" placeholder="Cari ASN, NIP, ID, atau Nomor SK..."
+              class="w-full pl-9 pr-3 py-2 bg-canvas-bg rounded-xl text-xs border border-border-subtle focus:outline-none focus:ring-2 focus:ring-electric-blue" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div
+            class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-canvas-bg rounded-lg font-mono text-xs text-navy-deep font-semibold border border-border-subtle">
+            <span class="material-symbols-outlined text-[16px] text-electric-blue">schedule</span>
+            <span id="desk-live-clock">--:--:-- WIT</span>
+          </div>
+          <button type="button" data-action="refresh-all" title="Sinkronisasi Ulang Data dari Database"
+            class="px-3 py-1.5 rounded-lg bg-surface-low hover:bg-surface-high text-navy-deep text-xs font-semibold flex items-center gap-1.5 border border-border-subtle transition-smooth">
+            <span class="material-symbols-outlined text-[16px]">sync</span>
+            <span class="hidden sm:inline">Refresh Data</span>
+          </button>
+          <button type="button" data-action="switch-to-mobile"
+            class="px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 border border-teal-200 transition-smooth">
+            <span class="material-symbols-outlined text-[16px]">smartphone</span>
+            <span class="hidden md:inline">Mode Mobile ASN</span>
+          </button>
+          <div class="flex items-center gap-2.5 pl-2 border-l border-border-subtle">
+            <div class="hidden sm:flex flex-col text-right">
+              <span id="desk-user-nama" class="text-xs font-bold text-text-main leading-tight">-</span>
+              <span id="desk-user-peran" class="text-[11px] font-semibold text-electric-blue">-</span>
+            </div>
+            <button type="button" data-action="logout" title="Keluar"
+              class="p-2 rounded-lg text-status-absent hover:bg-red-50 transition-smooth">
+              <span class="material-symbols-outlined text-[20px]">logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Workspace Konten 8 Menu -->
+      <main class="flex-1 p-4 sm:p-6 space-y-6 max-w-[1440px] w-full mx-auto">
+
+        <!-- MENU 1: DASBOR UTAMA -->
+        <div id="menu-dasbor-utama" class="desk-panel space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h2 class="text-xl sm:text-2xl font-bold text-text-main tracking-tight">Dasbor Operasional E-Presensi
+                  BKAD</h2>
+                <span id="dash-role-pill"
+                  class="px-2.5 py-0.5 rounded-full bg-blue-50 text-navy-deep text-xs font-semibold">Super Admin</span>
+              </div>
+              <p class="text-xs sm:text-sm text-text-muted mt-1">
+                Badan Pengelolaan Keuangan dan Aset Daerah Kab. Teluk Wondama • <span
+                  class="text-mode-wfa font-semibold">Gateway SIASN BKN & SIMDA Keuangan Aktif</span>
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="desk-menu" data-id="galeri-stitch"
+                class="px-3.5 py-2 rounded-xl bg-purple-50 border border-purple-200 hover:bg-purple-100 text-status-tracking text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">collections_bookmark</span>
+                <span>Galeri 73 Layar UI</span>
+              </button>
+              <button type="button" data-action="desk-menu" data-id="jadwal-mode-kerja"
+                class="px-3.5 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">pin_drop</span>
+                <span>Audit SPT GPS</span>
+              </button>
+              <button type="button" data-action="print-doc" data-id="BA_REKON"
+                class="px-3.5 py-2 rounded-xl bg-navy-deep hover:bg-primary text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">print</span>
+                <span>Cetak Berita Acara</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Statutory Legal Ledger Banner -->
+          <div
+            class="card-elevated rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div class="flex items-start sm:items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-50 text-navy-deep flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[22px]">verified_user</span>
+              </div>
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-bold text-text-main">Database Rekonsiliasi Jan – Okt 2025 Terkunci &
+                    Sah</span>
+                  <span
+                    class="px-2.5 py-0.5 rounded-full bg-surface-low font-mono text-[11px] text-navy-deep font-semibold">No.
+                    BA: 800.1.6.2/045/BA-REKON/BKAD-TW/XI/2025</span>
+                </div>
+                <p class="text-xs text-text-muted mt-0.5">Ledger akumulasi penalti TPP tersinkronisasi ke draf SPM Kasda
+                  & kepatuhan PP No. 94 Tahun 2021.</p>
+              </div>
+            </div>
+            <button type="button" data-action="desk-menu" data-id="rekonsiliasi-absen"
+              class="text-xs font-semibold text-electric-blue hover:underline shrink-0">Buka Modul Rekon →</button>
+          </div>
+
+          <!-- KPI Grid: 2 Kolom di HP, 4 Kolom di Desktop -->
+          <div id="dash-kpi-deck" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+
+          <!-- 4-Step Process Flow Pipeline -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm sm:text-base font-bold text-text-main">Alur Operasional Presensi & Kepatuhan BKAD</h3>
+              <span
+                class="font-mono text-[11px] text-text-muted bg-white px-2.5 py-1 rounded-full border border-border-subtle">SOP
+                2026</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="card-elevated rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span
+                      class="w-10 h-10 rounded-xl bg-blue-100 text-electric-blue flex items-center justify-center"><span
+                        class="material-symbols-outlined">face</span></span>
+                    <span class="font-mono text-[11px] font-bold text-text-muted">TAHAP 01</span>
+                  </div>
+                  <h4 class="text-sm font-bold">Presensi Mobile GPS</h4>
+                  <p class="text-xs text-text-muted mt-1">Swafoto & Geo-Lock radius 150m Kompleks Rasiei (07:30 – 08:00
+                    WIT).</p>
+                </div>
+                <button type="button" data-action="switch-to-mobile"
+                  class="mt-3 w-full py-2 rounded-lg bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold transition-smooth">Buka
+                  Kamera Mobile</button>
+              </div>
+              <div class="card-elevated rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span
+                      class="w-10 h-10 rounded-xl bg-emerald-100 text-status-present flex items-center justify-center"><span
+                        class="material-symbols-outlined">verified</span></span>
+                    <span class="font-mono text-[11px] font-bold text-text-muted">TAHAP 02</span>
+                  </div>
+                  <h4 class="text-sm font-bold">Verifikasi SPT Pesisir</h4>
+                  <p class="text-xs text-text-muted mt-1">Audit geotagging petugas WFA Kepulauan Roon, Windesi & Roswar.
+                  </p>
+                </div>
+                <button type="button" data-action="desk-menu" data-id="jadwal-mode-kerja"
+                  class="mt-3 w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-smooth">Verifikasi
+                  SPT</button>
+              </div>
+              <div class="card-elevated rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span
+                      class="w-10 h-10 rounded-xl bg-purple-100 text-status-tracking flex items-center justify-center"><span
+                        class="material-symbols-outlined">account_balance_wallet</span></span>
+                    <span class="font-mono text-[11px] font-bold text-text-muted">TAHAP 03</span>
+                  </div>
+                  <h4 class="text-sm font-bold">Rekonsiliasi & TPP</h4>
+                  <p class="text-xs text-text-muted mt-1">Dry-run anomali absen & penguncian Berita Acara potongan TPP.
+                  </p>
+                </div>
+                <button type="button" data-action="desk-menu" data-id="rekonsiliasi-absen"
+                  class="mt-3 w-full py-2 rounded-lg bg-status-tracking hover:bg-indigo-700 text-white text-xs font-semibold transition-smooth">Buka
+                  Rekonsiliasi</button>
+              </div>
+              <div class="card-elevated rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span
+                      class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><span
+                        class="material-symbols-outlined">gavel</span></span>
+                    <span class="font-mono text-[11px] font-bold text-text-muted">TAHAP 04</span>
+                  </div>
+                  <h4 class="text-sm font-bold">Disiplin PP 94/2021</h4>
+                  <p class="text-xs text-text-muted mt-1">Siklus 8 tahap Panggilan, BAP, SK Hukdis & sinkronisasi I-Dis
+                    BKN.</p>
+                </div>
+                <button type="button" data-action="desk-menu" data-id="disiplin-pegawai"
+                  class="mt-3 w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-smooth">Buka
+                  Arsip Disiplin</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Split Kalender Interaktif & Tabel Monitoring Presensi Live (Backend Search/Filter/Pagination) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <!-- Kalender Interaktif -->
+            <div class="lg:col-span-4 card-elevated rounded-2xl p-4 sm:p-5">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-navy-deep">Kalender Kehadiran WIT</h3>
+                <span id="cal-month-label" class="font-mono text-xs font-semibold text-electric-blue">Nov 2026</span>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-text-muted mb-2">
+                <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span>
+              </div>
+              <div id="dash-calendar-grid" class="grid grid-cols-7 gap-1.5 text-center text-xs"></div>
+              <div class="mt-4 pt-3 border-t border-border-subtle flex flex-wrap gap-3 text-[11px] text-text-muted">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-status-present"></span>Tepat
+                  Waktu</span>
+                <span class="flex items-center gap-1"><span
+                    class="w-2 h-2 rounded-full bg-status-late"></span>Terlambat</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-mode-wfa"></span>SPT
+                  Lapangan</span>
+              </div>
+            </div>
+
+            <!-- Tabel Monitoring Presensi Live -->
+            <div class="lg:col-span-8 card-elevated rounded-2xl p-4 sm:p-5 flex flex-col">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 class="text-sm sm:text-base font-bold text-navy-deep">Monitoring Log Presensi Real-Time</h3>
+                  <p class="text-xs text-text-muted">Pencarian, filter, & pemotongan halaman dieksekusi di backend</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select id="filter-presensi-mode"
+                    class="px-2.5 py-1.5 rounded-lg bg-surface-low border border-border-subtle text-xs font-medium">
+                    <option value="SEMUA">Semua Mode</option>
+                    <option value="WFO">WFO</option>
+                    <option value="WFH">WFH</option>
+                    <option value="WFA">WFA</option>
+                  </select>
+                  <select id="filter-presensi-status"
+                    class="px-2.5 py-1.5 rounded-lg bg-surface-low border border-border-subtle text-xs font-medium">
+                    <option value="SEMUA">Semua Status</option>
+                    <option value="Tepat Waktu">Tepat Waktu</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Dinas Luar (SPT)">Dinas Luar (SPT)</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Cuti">Cuti</option>
+                    <option value="Alpa">Alpa</option>
+                  </select>
+                  <button type="button" data-action="open-manual-presensi-modal"
+                    class="px-3 py-1.5 rounded-lg bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition-smooth">
+                    <span class="material-symbols-outlined text-[15px]">edit_calendar</span>
+                    <span>Input Absen Manual</span>
+                  </button>
+                  <button type="button" data-action="goto-impor-presensi"
+                    class="px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1 transition-smooth">
+                    <span class="material-symbols-outlined text-[15px]">upload_file</span>
+                    <span>Impor Excel (Mulai Jan)</span>
+                  </button>
+                </div>
+              </div>
+              <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left border-collapse table-fluid">
+                  <thead>
+                    <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                      <th class="py-2.5 px-3 font-semibold">ASN & NIP</th>
+                      <th class="py-2.5 px-3 font-semibold">Tanggal / Jam WIT</th>
+                      <th class="py-2.5 px-3 font-semibold">Mode & Koordinat</th>
+                      <th class="py-2.5 px-3 font-semibold">Status & Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-presensi-live" class="divide-y divide-border-subtle"></tbody>
+                </table>
+              </div>
+              <div id="pag-presensi-live"
+                class="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-muted">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MENU 1B: MASTER SKPD / OPD & SUB UNIT (PUSKESMAS, BAGIAN, BIDANG) -->
+        <div id="menu-master-skpd" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Master SKPD / OPD &amp; Sub Unit Kerja</h2>
+              <p class="text-xs text-text-muted">Kelola daftar SKPD (BKAD, Dinas Kesehatan, Sekretariat Daerah, dll.) beserta Sub Unit di bawahnya (Puskesmas, Bagian, Bidang) secara manual atau impor Excel</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-skpd-modal"
+                class="px-3.5 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">add_business</span>
+                <span>Tambah SKPD / Sub Unit</span>
+              </button>
+              <button type="button" data-action="download-skpd-template-xls"
+                class="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">table_view</span>
+                <span>Unduh Templat Excel SKPD (.xls)</span>
+              </button>
+              <button type="button" data-action="download-skpd-template-csv"
+                class="px-3 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">download</span>
+                <span>Unduh Templat CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Impor Massal Master SKPD (.XLS / .XLSX / .CSV)</h3>
+                <p class="text-xs text-text-muted mt-0.5">Format kolom baku: <span class="font-mono font-semibold text-navy-deep">Nomor, Kode SKPD, Nama SKPD, Nama Jabatan Pimpinan SKPD, Nama Kepala SKPD, NIP Kepala SKPD</span> (kolom NIP &amp; Kode terkunci Teks).</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <input id="import-skpd-file" type="file" accept=".xls,.xlsx,.csv,.txt,.tsv"
+                class="text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-navy-deep file:font-semibold hover:file:bg-blue-100 cursor-pointer" />
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-xs text-text-main cursor-pointer select-none">
+                  <input id="chk-import-skpd-upsert" type="checkbox" checked
+                    class="rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
+                  <span>Perbarui otomatis jika Kode / Nama SKPD sudah ada</span>
+                </label>
+                <button type="button" data-action="process-skpd-file"
+                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px]">upload_file</span>
+                  <span>Proses &amp; Pratinjau Berkas SKPD</span>
+                </button>
+              </div>
+            </div>
+            <div id="import-skpd-preview-box" class="hidden mt-3 pt-4 border-t border-border-subtle space-y-3"></div>
+          </div>
+
+          <div class="card-elevated rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div class="text-sm font-bold text-navy-deep">Daftar SKPD &amp; Sub Unit Terdaftar</div>
+              <input id="search-master-skpd" type="text" placeholder="Cari Kode SKPD, Nama SKPD, Kepala, atau Sub Unit..."
+                class="w-full sm:w-80 px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs" />
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fluid">
+                <thead>
+                  <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                    <th class="py-2.5 px-3 w-12 text-center">No</th>
+                    <th class="py-2.5 px-3">Kode SKPD</th>
+                    <th class="py-2.5 px-3">Nama SKPD &amp; Sub Unit</th>
+                    <th class="py-2.5 px-3">Jabatan &amp; Kepala SKPD (NIP)</th>
+                    <th class="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-master-skpd" class="divide-y divide-border-subtle"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MENU 2: MASTER & WIZARD IMPOR PEGAWAI -->
+        <div id="menu-impor-pegawai" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Master Data Pegawai & Wizard Impor ASN</h2>
+              <p class="text-xs text-text-muted">Kelola daftar PNS/PPPK BKAD Kab. Teluk Wondama, Unit Bidang, Sub
+                Bidang, dan impor massal CSV/Excel</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-bidang-modal"
+                class="px-4 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[18px] text-mode-wfa">account_tree</span>
+                <span>Kelola Bidang & Sub Bidang</span>
+              </button>
+              <button type="button" data-action="open-pegawai-modal"
+                class="px-4 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[18px]">person_add</span>
+                <span>Tambah Pegawai Baru</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Wizard Impor Cepat -->
+          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Wizard Impor Massal Pegawai (Excel .XLS / .XLSX / .CSV)
+                </h3>
+                <p class="text-xs text-text-muted mt-0.5">Unduh templat resmi 10 kolom baku (NIP terkunci Format Teks
+                  18-digit), isi data ASN/PPPK, lalu unggah untuk validasi Dry-Run sebelum disimpan.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-action="download-pegawai-template-xls"
+                  class="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 transition-smooth">
+                  <span class="material-symbols-outlined text-[17px]">table_view</span>
+                  <span>Unduh Templat Excel (.xls)</span>
+                </button>
+                <button type="button" data-action="download-pegawai-template-csv"
+                  class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-navy-deep text-xs font-semibold flex items-center gap-1.5 transition-smooth">
+                  <span class="material-symbols-outlined text-[17px]">download</span>
+                  <span>Unduh Templat CSV (.csv)</span>
+                </button>
+                <button type="button" data-action="open-pedoman-impor-pegawai"
+                  class="px-3 py-2 rounded-xl bg-white hover:bg-surface-low border border-border-subtle text-navy-deep text-xs font-semibold flex items-center gap-1.5 transition-smooth">
+                  <span class="material-symbols-outlined text-[17px]">content_paste_go</span>
+                  <span>Pedoman &amp; Tempel dari Excel</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <input id="import-pegawai-file" type="file" accept=".xls,.xlsx,.csv,.txt,.tsv"
+                  class="text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-navy-deep file:font-semibold hover:file:bg-blue-100 cursor-pointer" />
+                <span class="text-[11px] text-text-muted">Mendukung <span
+                    class="font-mono font-semibold text-navy-deep">.xls</span>, <span
+                    class="font-mono font-semibold text-navy-deep">.xlsx</span>, &amp; <span
+                    class="font-mono font-semibold text-navy-deep">.csv</span></span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-xs text-text-main cursor-pointer select-none">
+                  <input id="chk-import-pegawai-upsert" type="checkbox" checked
+                    class="rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
+                  <span>Perbarui data jika NIP sudah terdaftar</span>
+                </label>
+                <button type="button" data-action="process-pegawai-file"
+                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px]">upload_file</span>
+                  <span>Proses &amp; Impor Berkas Excel / CSV</span>
+                </button>
+              </div>
+            </div>
+            <div id="import-pegawai-preview-box" class="hidden mt-3 pt-4 border-t border-border-subtle space-y-3"></div>
+          </div>
+
+          <!-- Tabel Master Pegawai -->
+          <div class="card-elevated rounded-2xl p-4 sm:p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <input id="search-pegawai-input" type="text" placeholder="Cari nama atau NIP pegawai..."
+                class="px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs w-full sm:w-72" />
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="filter-pegawai-status-aktif"
+                  class="px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs font-semibold text-navy-deep">
+                  <option value="AKTIF">Pegawai Aktif</option>
+                  <option value="ARSIP">Arsip (Pindah / Pensiun / Nonaktif)</option>
+                  <option value="SEMUA">Semua (Aktif &amp; Arsip)</option>
+                </select>
+                <select id="filter-pegawai-bidang"
+                  class="px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs">
+                  <option value="SEMUA">Semua Bidang</option>
+                  <option value="Sekretariat BKAD">Sekretariat BKAD</option>
+                  <option value="Bidang Aset">Bidang Aset</option>
+                  <option value="Bidang Perbendaharaan">Bidang Perbendaharaan</option>
+                  <option value="Bidang Anggaran">Bidang Anggaran</option>
+                  <option value="Pimpinan BKAD">Pimpinan BKAD</option>
+                </select>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fluid">
+                <thead>
+                  <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                    <th class="py-2.5 px-3 w-12 text-center">No</th>
+                    <th class="py-2.5 px-3">ID & NIP</th>
+                    <th class="py-2.5 px-3">Nama & Pangkat</th>
+                    <th class="py-2.5 px-3">Jabatan & Bidang</th>
+                    <th class="py-2.5 px-3">Peran & Mode</th>
+                    <th class="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-master-pegawai" class="divide-y divide-border-subtle"></tbody>
+              </table>
+            </div>
+            <div id="pag-master-pegawai"
+              class="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-muted">
+            </div>
+          </div>
+        </div>
+
+        <!-- MENU 3: WIZARD 4-LANGKAH REKONSILIASI PRESENSI RETROAKTIF & TPP -->
+        <div id="menu-rekonsiliasi-absen" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Input Manual &amp; Impor Presensi Retroaktif (Mulai Januari)
+              </h2>
+              <p class="text-xs text-text-muted">Unduh templat Excel presensi, impor massal data absen sejak Januari ke
+                database, dan selesaikan Berita Acara rekonsiliasi TPP</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-manual-presensi-modal"
+                class="px-3.5 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">edit_calendar</span>
+                <span>Input Absen Manual / Rentang Tgl</span>
+              </button>
+              <button type="button" data-action="download-rekon-template-xls"
+                class="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">table_view</span>
+                <span>Unduh Templat Excel (.xls)</span>
+              </button>
+              <button type="button" data-action="download-rekon-template"
+                class="px-3 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">download</span>
+                <span>Unduh Templat CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Kartu Unggah Excel & Tempel Data Absen Mulai Januari -->
+          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Impor Massal Log Presensi (.XLS / .XLSX / .CSV) — Periode
+                  Mulai Januari</h3>
+                <p class="text-xs text-text-muted mt-0.5">Kolom NIP &amp; Tanggal di templat Excel sudah terkunci format
+                  Teks agar data Januari s.d. bulan berjalan aman diimpor ke LogPresensi.</p>
+              </div>
+              <button type="button" data-action="open-pedoman-impor-presensi"
+                class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-navy-deep text-xs font-semibold flex items-center gap-1.5 self-start lg:self-auto transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">content_paste_go</span>
+                <span>Pedoman &amp; Tempel dari Excel</span>
+              </button>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <input id="import-presensi-file" type="file" accept=".xls,.xlsx,.csv,.txt,.tsv"
+                  class="text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-navy-deep file:font-semibold hover:file:bg-blue-100 cursor-pointer" />
+                <span class="text-[11px] text-text-muted">Format: <span
+                    class="font-mono font-semibold text-navy-deep">.xls</span>, <span
+                    class="font-mono font-semibold text-navy-deep">.xlsx</span>, <span
+                    class="font-mono font-semibold text-navy-deep">.csv</span></span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-xs text-text-main cursor-pointer select-none">
+                  <input id="chk-import-presensi-upsert" type="checkbox" checked
+                    class="rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
+                  <span>Perbarui otomatis jika NIP &amp; Tanggal sudah tercatat</span>
+                </label>
+                <button type="button" data-action="process-presensi-file"
+                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px]">upload_file</span>
+                  <span>Proses &amp; Impor Berkas Presensi</span>
+                </button>
+              </div>
+            </div>
+            <div id="import-presensi-preview-box" class="hidden mt-3 pt-4 border-t border-border-subtle space-y-3">
+            </div>
+          </div>
+
+          <!-- 4-Step Wizard Interactive Card -->
+          <div class="card-elevated rounded-2xl p-5 space-y-4">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5" id="rekon-step-pills">
+              <div
+                class="p-3 rounded-xl bg-blue-50 border border-electric-blue/30 text-navy-deep text-xs font-semibold">1.
+                Pilih Periode / Unggah</div>
+              <div class="p-3 rounded-xl bg-surface-low text-text-muted text-xs font-semibold">2. Validasi Dry-Run</div>
+              <div class="p-3 rounded-xl bg-surface-low text-text-muted text-xs font-semibold">3. Resolusi Anomali TPP
+              </div>
+              <div class="p-3 rounded-xl bg-surface-low text-text-muted text-xs font-semibold">4. Komit & Kunci BA</div>
+            </div>
+            <div id="rekon-wizard-body" class="p-4 rounded-xl bg-surface-low border border-border-subtle space-y-3">
+            </div>
+          </div>
+
+          <!-- Tabel Daftar Berita Acara Rekonsiliasi -->
+          <div class="card-elevated rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-navy-deep mb-3">Arsip Ledger Berita Acara Rekonsiliasi</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fluid">
+                <thead>
+                  <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                    <th class="py-2.5 px-3">ID & Periode</th>
+                    <th class="py-2.5 px-3">Nomor Berita Acara</th>
+                    <th class="py-2.5 px-3">Anomali</th>
+                    <th class="py-2.5 px-3">Status Penguncian</th>
+                    <th class="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-rekon-list" class="divide-y divide-border-subtle"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MENU 4: JADWAL MODE KERJA, BULK ASSIGN & AUDIT GEOTAGGING SPT -->
+        <div id="menu-jadwal-mode-kerja" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Jadwal Mode Kerja Massal & Audit Geotagging SPT</h2>
+              <p class="text-xs text-text-muted">Atur mode kerja per bidang (WFO/WFH/WFA) dan verifikasi penugasan
+                pesisir/kepulauan</p>
+            </div>
+            <button type="button" data-action="open-spt-modal"
+              class="px-4 py-2 rounded-xl bg-mode-wfa hover:bg-teal-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
+              <span>Terbitkan SPT Baru</span>
+            </button>
+          </div>
+
+          <!-- Bulk Assign Mode Kerja Panel -->
+          <div class="card-elevated rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-navy-deep mb-3">Atur Mode Kerja Massal (Bulk Assign Per Bidang)</h3>
+            <form id="bulk-assign-form" action="javascript:void(0);"
+              class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Unit Bidang Target</label>
+                <select id="bulk-bidang"
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs">
+                  <option value="Bidang Aset">Bidang Aset</option>
+                  <option value="Bidang Perbendaharaan">Bidang Perbendaharaan</option>
+                  <option value="Bidang Anggaran">Bidang Anggaran</option>
+                  <option value="Sekretariat BKAD">Sekretariat BKAD</option>
+                  <option value="SEMUA">Seluruh Bidang BKAD</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Mode Kerja Baru</label>
+                <select id="bulk-mode"
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs">
+                  <option value="WFO">WFO (Kantor BKAD Rasiei)</option>
+                  <option value="WFA">WFA (Dinas Lapangan / SPT)</option>
+                  <option value="WFH">WFH (Kerja Dari Rumah)</option>
+                </select>
+              </div>
+              <button id="btn-bulk-assign" type="submit"
+                class="py-2.5 px-4 rounded-xl bg-navy-deep hover:bg-primary text-white text-xs font-semibold flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">published_with_changes</span>
+                <span>Terapkan Massal</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Tabel Audit Geotagging & Daftar SPT -->
+          <div class="card-elevated rounded-2xl p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 class="text-sm font-bold text-navy-deep">Daftar Penugasan SPT & Audit Geotagging (Kepulauan Roon /
+                Windesi)</h3>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-action="print-doc" data-id="LAMPIRAN_SPT_ROSTER"
+                  class="px-3 py-1.5 rounded-lg bg-surface-low hover:bg-surface-high text-navy-deep text-xs font-semibold flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[16px]">print</span>
+                  <span>Cetak Roster & Lampiran SPT</span>
+                </button>
+                <button type="button" data-action="print-doc" data-id="VERIFIKASI_SPT_ROON"
+                  class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-electric-blue hover:text-white text-navy-deep text-xs font-semibold flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[16px]">satellite_alt</span>
+                  <span>Cetak Verifikasi Geotagging Roon</span>
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fluid">
+                <thead>
+                  <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                    <th class="py-2.5 px-3">ID & Nomor SPT</th>
+                    <th class="py-2.5 px-3">Lokasi & Tanggal</th>
+                    <th class="py-2.5 px-3">Petugas & Keperluan</th>
+                    <th class="py-2.5 px-3">Status GPS</th>
+                    <th class="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-spt-list" class="divide-y divide-border-subtle"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="spt-extra-audit-panel" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+        </div>
+
+        <!-- MENU 5: PERSETUJUAN IZIN & CUTI BERJENJANG (3 TAHAP PEJABAT) -->
+        <div id="menu-persetujuan-izin" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Persetujuan Izin & Cuti Berjenjang (3 Tahap)</h2>
+              <p class="text-xs text-text-muted">Alur Staf: Kasubid → Kepala Bidang → Kepala Badan &nbsp;|&nbsp; Alur Kepala Seksi/Kasubid: Kepala Bidang → Sekretaris → Kepala Badan</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="filter-izin-status"
+                class="px-3 py-2 rounded-xl bg-white border border-border-subtle text-xs font-semibold">
+                <option value="SEMUA">Semua Permohonan</option>
+                <option value="TAHAP_1">Tahap 1: Antrean Penelaah Awal (Kasubid / Kabid)</option>
+                <option value="TAHAP_2">Tahap 2: Antrean Paraf (Kabid / Sekretaris)</option>
+                <option value="TAHAP_3">Tahap 3: Antrean Kepala Badan</option>
+                <option value="DIKEMBALIKAN">Dikembalikan (Perlu Revisi Pemohon)</option>
+                <option value="Sah Diterbitkan">Sah Diterbitkan</option>
+              </select>
+              <button type="button" data-action="open-izin-modal"
+                class="px-4 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[18px]">post_add</span>
+                <span>Ajukan Izin / Cuti Baru</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="izin-approval-cards" class="space-y-4"></div>
+        </div>
+
+        <!-- MENU 6: REKAPITULASI PRESENSI (HARIAN, BULANAN, SEMESTERAN, TAHUNAN) -->
+        <div id="menu-rekap-presensi" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Rekapitulasi Kehadiran & Perhitungan TPP</h2>
+              <p class="text-xs text-text-muted">Laporan periodik harian, bulanan, semesteran, dan tahunan berdasarkan
+                Hari Kerja Efektif (dikurangi Libur Nasional, Cuti Bersama & Libur Fakultatif)</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-hari-libur-modal"
+                class="px-3.5 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[17px] text-amber-600">event_busy</span>
+                <span>Kalender Libur & Cuti Bersama</span>
+              </button>
+              <button type="button" data-action="open-generate-alpa-modal"
+                class="px-3.5 py-2 rounded-xl bg-status-absent hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[17px]">person_alert</span>
+                <span>Generate Alpa (Tutup Buku Tanpa Absen)</span>
+              </button>
+              <button type="button" data-action="download-rekon-template-xls"
+                class="px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[17px]">table_view</span>
+                <span>Unduh Templat Impor Presensi (.xls)</span>
+              </button>
+              <button type="button" data-action="export-rekap-csv"
+                class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">table_view</span>
+                <span>Ekspor Excel (.CSV)</span>
+              </button>
+              <button type="button" data-action="print-doc" data-id="REKAP_BULANAN"
+                class="px-3.5 py-2 rounded-xl bg-navy-deep hover:bg-primary text-white text-xs font-semibold flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">print</span>
+                <span>Cetak Rekap A4</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2" id="rekap-period-tabs">
+              <button type="button" data-action="rekap-tab" data-id="HARIAN"
+                class="rekap-tab-btn px-3.5 py-2 rounded-xl bg-white border border-border-subtle text-text-main text-xs font-semibold">Rekap
+                Harian</button>
+              <button type="button" data-action="rekap-tab" data-id="BULANAN"
+                class="rekap-tab-btn px-3.5 py-2 rounded-xl bg-electric-blue text-white text-xs font-semibold">Rekap
+                Bulanan</button>
+              <button type="button" data-action="rekap-tab" data-id="SEMESTERAN"
+                class="rekap-tab-btn px-3.5 py-2 rounded-xl bg-white border border-border-subtle text-text-main text-xs font-semibold">Rekap
+                Semesteran</button>
+              <button type="button" data-action="rekap-tab" data-id="TAHUNAN"
+                class="rekap-tab-btn px-3.5 py-2 rounded-xl bg-white border border-border-subtle text-text-main text-xs font-semibold">Rekap
+                Tahunan</button>
+              <button type="button" data-action="rekap-tab" data-id="RENTANG"
+                class="rekap-tab-btn px-3.5 py-2 rounded-xl bg-white border border-border-subtle text-text-main text-xs font-semibold">Rentang / Tanggal Khusus</button>
+            </div>
+
+            <div
+              class="flex flex-wrap items-center gap-2 bg-white px-3 py-2 rounded-xl border border-border-subtle shadow-sm">
+              <span class="text-[11px] font-bold text-navy-deep">Periode:</span>
+              <span id="rekap-month-year-wrap" class="inline-flex items-center gap-2">
+                <select id="rekap-filter-bulan"
+                  class="px-2.5 py-1 rounded-lg bg-surface-low border border-border-subtle text-xs font-semibold text-navy-deep">
+                  <option value="01">Januari</option>
+                  <option value="02">Februari</option>
+                  <option value="03">Maret</option>
+                  <option value="04">April</option>
+                  <option value="05">Mei</option>
+                  <option value="06">Juni</option>
+                  <option value="07">Juli</option>
+                  <option value="08">Agustus</option>
+                  <option value="09">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11" selected>November</option>
+                  <option value="12">Desember</option>
+                </select>
+                <select id="rekap-filter-tahun"
+                  class="px-2.5 py-1 rounded-lg bg-surface-low border border-border-subtle font-mono text-xs font-bold text-navy-deep">
+                  <option value="2025">2025</option>
+                  <option value="2026" selected>2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </span>
+              <span id="rekap-single-date-wrap" class="hidden inline-flex items-center gap-1.5">
+                <input type="date" id="rekap-single-date"
+                  class="px-2.5 py-1 rounded-lg bg-surface-low border border-border-subtle font-mono text-xs font-semibold text-navy-deep" />
+              </span>
+              <span id="rekap-range-wrap" class="hidden inline-flex flex-wrap items-center gap-1.5">
+                <input type="date" id="rekap-date-start"
+                  class="px-2.5 py-1 rounded-lg bg-surface-low border border-border-subtle font-mono text-xs font-semibold text-navy-deep" />
+                <span class="text-[11px] font-bold text-text-muted">s.d.</span>
+                <input type="date" id="rekap-date-end"
+                  class="px-2.5 py-1 rounded-lg bg-surface-low border border-border-subtle font-mono text-xs font-semibold text-navy-deep" />
+              </span>
+              <span class="text-[11px] font-bold text-navy-deep ml-1">Perlakuan Belum Absen:</span>
+              <select id="rekap-alpa-mode"
+                class="px-2.5 py-1 rounded-lg bg-blue-50 border border-electric-blue/30 text-xs font-bold text-navy-deep">
+                <option value="AUTO_ELAPSED">Otomatis: Hari Kerja Berjalan Tanpa Log = Tanpa Keterangan (Alpa)</option>
+                <option value="LOG_ONLY">Hanya dari Log Tercatat (Belum Ada Log = Ditandai Belum Absen)</option>
+                <option value="FULL_MONTH">Tutup Buku Sebulan Penuh (Semua Hari Kerja Tanpa Log = Alpa)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="rekap-workday-summary-bar"
+            class="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-navy-deep">
+          </div>
+
+          <!-- TABEL 1 (UTAMA - DIPERTAHANKAN PERSIS SEPERTI LAYOUT SEBELUMNYA) -->
+          <div class="card-elevated rounded-2xl p-5">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse table-fluid">
+                <thead>
+                  <tr class="bg-surface-low text-text-muted uppercase text-[11px] border-b border-border-subtle">
+                    <th class="py-2.5 px-3">Nama & NIP</th>
+                    <th class="py-2.5 px-3">Unit Bidang</th>
+                    <th class="py-2.5 px-3">Hadir / Hari Kerja Efektif</th>
+                    <th class="py-2.5 px-3">Terlambat / Alpa (Tanpa Keterangan)</th>
+                    <th class="py-2.5 px-3">Persentase Kehadiran</th>
+                    <th class="py-2.5 px-3">Estimasi Potongan TPP</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-rekap-presensi" class="divide-y divide-border-subtle"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TABEL 2 (TAMBAHAN DI BAWAH - MATRIKS ABSENSI TANGGAL 1 S/D 31 FORMAT EXCEL H / I / C / S / A) -->
+          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Tabel Matriks Absensi Harian Pegawai (Tanggal 1 s/d Akhir
+                  Bulan — Format H / I / C / S / A)</h3>
+                <p class="text-[11px] text-text-muted">Kolom merah menandakan Hari Minggu, Sabtu, Libur Nasional, Cuti
+                  Bersama, atau Libur Fakultatif Daerah</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button type="button" data-action="print-doc" data-id="REKAP_MATRIKS_BULANAN"
+                  class="px-3 py-1.5 rounded-xl bg-navy-deep hover:bg-primary text-white text-xs font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">print</span>
+                  <span>Cetak Matriks 1–31 A4</span>
+                </button>
+                <button type="button" data-action="export-rekap-matrix-xls"
+                  class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">download</span>
+                  <span>Download Tabel Matriks Excel (.xls)</span>
+                </button>
+              </div>
+            </div>
+            <div id="rekap-matrix-container" class="overflow-x-auto"></div>
+          </div>
+        </div>
+
+        <!-- MENU 7: DISIPLIN PEGAWAI PP 94/2021 & INTEGRASI I-DIS BKN -->
+        <div id="menu-disiplin-pegawai" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Penegakan Disiplin PP No. 94/2021 & Integrasi I-Dis BKN</h2>
+              <p class="text-xs text-text-muted">Alur lengkap 8 tahap dari Surat Panggilan I, BAP, SK Hukuman Disiplin,
+                hingga Manifest JSON SIASN</p>
+            </div>
+            <button type="button" data-action="open-disiplin-modal"
+              class="px-4 py-2 rounded-xl bg-status-absent hover:bg-red-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-[18px]">post_add</span>
+              <span>Registrasi Kasus Baru</span>
+            </button>
+          </div>
+
+          <div id="disiplin-workspace-container" class="space-y-4"></div>
+        </div>
+
+        <!-- MENU 8: PENGATURAN SISTEM -->
+        <div id="menu-pengaturan-sistem" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Pengaturan Geofence, Jam Kerja WIT, Hari Libur & Gateway</h2>
+              <p class="text-xs text-text-muted">Konfigurasi titik koordinat Isei/Rasiei, batas radius WFO, aturan
+                keterlambatan WIT, kalender libur nasional/cuti bersama/fakultatif, pejabat pengesah, dan struktur
+                Bidang</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-hari-libur-modal"
+                class="px-4 py-2 rounded-xl bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-950 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth shrink-0">
+                <span class="material-symbols-outlined text-[18px] text-amber-600">event_busy</span>
+                <span>Kelola Hari Libur, Cuti Bersama & Fakultatif</span>
+              </button>
+              <button type="button" data-action="open-bidang-modal"
+                class="px-4 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth shrink-0">
+                <span class="material-symbols-outlined text-[18px] text-mode-wfa">account_tree</span>
+                <span>Tambah / Kelola Bidang & Sub Bidang</span>
+              </button>
+            </div>
+          </div>
+
+          <form id="settings-form" action="javascript:void(0);"
+            class="card-elevated rounded-2xl p-5 space-y-5 max-w-3xl">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Latitude Kantor
+                  BKAD</label>
+                <input id="set-lat" type="number" step="0.00001" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Longitude Kantor
+                  BKAD</label>
+                <input id="set-lng" type="number" step="0.00001" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Radius Geo-Lock
+                  (Meter)</label>
+                <input id="set-radius" type="number" min="20" max="5000" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Batas Jam Masuk
+                  (WIT)</label>
+                <input id="set-jam-masuk" type="text" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Jam Pulang Sen-Kam
+                  (WIT)</label>
+                <input id="set-jam-pulang" type="text" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Potongan TPP / Menit
+                  (Rp)</label>
+                <input id="set-tarif-tpp" type="number" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">Nama Kepala Badan
+                  Pengesah</label>
+                <input id="set-kaban-nama" type="text" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-text-muted uppercase mb-1">NIP Kepala Badan</label>
+                <input id="set-kaban-nip" type="text" required
+                  class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
+              </div>
+            </div>
+
+            <button id="btn-save-settings" type="submit"
+              class="px-5 py-2.5 rounded-xl bg-navy-deep hover:bg-primary text-white text-xs font-semibold flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">save</span>
+              <span>Simpan Pengaturan Sistem</span>
+            </button>
+          </form>
+
+          <!-- Panel Delegasi Plt. / Plh. Pejabat (PRD v2.0) -->
+          <div class="card-elevated rounded-2xl p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Delegasi Pelaksana Tugas (Plt. / Plh.) Pejabat Penelaah</h3>
+                <p class="text-xs text-text-muted">Pelimpahan sementara wewenang paraf &amp; persetujuan izin/cuti saat pejabat definitif dinas luar atau cuti</p>
+              </div>
+              <button type="button" data-action="open-delegasi-plt-modal"
+                class="px-3.5 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 self-start sm:self-auto">
+                <span class="material-symbols-outlined text-[16px]">person_add</span>
+                <span>Tambah Delegasi Plt.</span>
+              </button>
+            </div>
+            <div id="delegasi-plt-container" class="overflow-x-auto"></div>
+          </div>
+
+          <!-- Panel Audit Trail & Log Keamanan Akses (PRD v2.0) -->
+          <div class="card-elevated rounded-2xl p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Audit Trail &amp; Log Keamanan Akses Dokumen Rahasia</h3>
+                <p class="text-xs text-text-muted">Rekam jejak otomatis akses dokumen rahasia BAP/SK Disiplin, Adendum BA Rekon, dan delegasi Plt.</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-blue-50 text-navy-deep font-mono text-[11px] font-bold">AuditLog Aktif</span>
+            </div>
+            <div id="audit-log-container" class="overflow-x-auto"></div>
+          </div>
+        </div>
+
+        <!-- MENU 9: GALERI & PRATINJAU INTERAKTIF 73 DOKUMEN FOLDER STITCH -->
+        <div id="menu-galeri-stitch" class="hidden desk-panel space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-navy-deep">Galeri & Pratinjau 73 Dokumen & Layar UI Stitch</h2>
+              <p class="text-xs text-text-muted">Seluruh prototipe HTML & tangkapan layar dari folder <span
+                  class="font-mono text-navy-deep">stitch_e_presensi_bkad_teluk_wondama</span> terhubung langsung untuk
+                inspeksi & pratinjau interaktif</p>
+            </div>
+            <span id="stitch-count-badge"
+              class="px-3 py-1.5 rounded-full bg-blue-50 text-navy-deep font-mono text-xs font-bold shrink-0">73 Dokumen
+              Terindeks</span>
+          </div>
+
+          <div
+            class="card-elevated rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="relative flex-1">
+              <span class="material-symbols-outlined absolute left-3 top-2.5 text-text-muted text-[18px]">search</span>
+              <input id="search-stitch-input" type="text"
+                placeholder="Cari nama dokumen, folder, DISP-2025-009, Kepulauan Roon, BKN..."
+                class="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs focus:outline-none focus:ring-2 focus:ring-electric-blue" />
+            </div>
+            <select id="filter-stitch-cat"
+              class="px-3 py-2 rounded-xl bg-surface-low border border-border-subtle text-xs font-semibold text-navy-deep">
+              <option value="SEMUA">Semua Kategori (73)</option>
+              <option value="Dasbor & Login">Dasbor & Login</option>
+              <option value="Mobile & Kamera GPS">Mobile & Kamera GPS</option>
+              <option value="Izin & Cuti 3 Tahap">Izin & Cuti 3 Tahap</option>
+              <option value="Mode Kerja & SPT">Mode Kerja & SPT Kepulauan</option>
+              <option value="Rekonsiliasi & TPP">Rekonsiliasi & TPP</option>
+              <option value="Disiplin PP 94/2021">Disiplin PP 94/2021 & I-Dis BKN</option>
+              <option value="Rekapitulasi">Rekapitulasi Presensi</option>
+              <option value="Simulasi Cetak A4">Simulasi Cetak Ctrl+P A4</option>
+            </select>
+          </div>
+
+          <div id="stitch-gallery-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </div>
+
+      </main>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- CUSTOM MODAL DIALOG (Form Tambah/Edit, JSON Viewer, & Print A4 Engine)  -->
+  <!-- ======================================================================= -->
+  <div id="custom-modal"
+    class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div id="custom-modal-box"
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div id="modal-header-bar" class="px-5 py-4 bg-navy-deep text-white flex items-center justify-between">
+        <h3 id="modal-title" class="text-sm sm:text-base font-bold">Judul Modal</h3>
+        <button type="button" data-action="close-modal" class="p-1 rounded-lg hover:bg-white/20 transition-smooth">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+      <div id="modal-body" class="p-5 overflow-y-auto flex-1 text-xs sm:text-sm"></div>
+    </div>
+  </div>
+
+    <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

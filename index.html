@@ -49,6 +49,8 @@
       };
     }
   </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
@@ -367,28 +369,42 @@
 
       <!-- TAB MOBILE 2: KAMERA PRESENSI GPS & BIOMETRIK WAJAH -->
       <div id="mob-tab-kamera" class="hidden px-4 py-3 space-y-3">
-        <div class="flex items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <button type="button" id="btn-gps-detect" data-action="detect-gps"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-status-present text-white text-xs font-semibold shadow-sm transition-smooth active:scale-95">
-            <span class="material-symbols-outlined text-[16px]">satellite_alt</span>
-            <span id="mob-gps-label">Lokasi Terdeteksi (Akurasi: 8m)</span>
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold shadow-sm transition-smooth active:scale-95">
+            <span class="material-symbols-outlined text-[16px]">my_location</span>
+            <span id="mob-gps-label">Mencari GPS HP...</span>
           </button>
-          <select id="mob-gps-preset"
-            class="text-[11px] font-mono bg-white border border-border-subtle rounded-lg px-2 py-1.5 text-navy-deep">
-            <option value="-2.72381,134.50422">Kantor BKAD Rasiei (Dalam Radius)</option>
-            <option value="-2.46820,134.58190">Distrik Kep. Roon (Lokasi SPT)</option>
-            <option value="-2.81500,134.61000">Luar Zona Kantor (Uji Geo-Lock)</option>
-          </select>
+          <button type="button" id="btn-toggle-geolock" data-action="toggle-geolock"
+            class="hidden flex items-center gap-1 px-3 py-1.5 rounded-full bg-navy-deep text-white text-[11px] font-semibold shadow-sm transition-smooth active:scale-95">
+            <span id="icon-toggle-geolock" class="material-symbols-outlined text-[15px]">lock</span>
+            <span id="label-toggle-geolock">Kunci GPS: AKTIF</span>
+          </button>
         </div>
 
         <div
-          class="px-3 py-2 rounded-xl bg-white border border-border-subtle flex items-center justify-between text-xs">
+          class="px-3 py-2 rounded-xl bg-white border border-border-subtle flex flex-wrap items-center justify-between gap-2 text-xs">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-electric-blue animate-ping"></span>
             <span class="font-semibold text-primary">Mode <span id="cam-mode-label">WFO</span> • <span
                 id="cam-jenis-label">MASUK</span></span>
           </div>
-          <span id="cam-coord-mono" class="font-mono text-[11px] text-text-muted">-2.72381, 134.50422</span>
+          <span id="cam-coord-mono" class="font-mono text-[11px] text-text-muted">Menunggu GPS HP...</span>
+        </div>
+
+        <!-- Peta Lokasi GPS & Radius Kantor Real-Time -->
+        <div class="card-elevated rounded-2xl overflow-hidden border border-border-subtle">
+          <div class="px-3.5 py-2 bg-surface-low border-b border-border-subtle flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-navy-deep">
+              <span class="material-symbols-outlined text-[16px] text-electric-blue">map</span>
+              <span>Peta Lokasi &amp; Radius Kantor</span>
+            </div>
+            <span id="mob-gps-distance-badge"
+              class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono text-[10px] font-bold">Mendeteksi...</span>
+          </div>
+          <div id="mob-gps-map" class="w-full h-44 bg-slate-100 relative z-0 flex items-center justify-center text-[11px] text-text-muted">
+            Memuat peta lokasi GPS...
+          </div>
         </div>
 
         <!-- Status Biometrik Face Recognition (AI Face ID) -->
@@ -1584,6 +1600,17 @@
                 <input id="set-radius" type="number" min="20" max="5000" required
                   class="w-full px-3 py-2 rounded-xl bg-surface-low border border-border-subtle font-mono text-xs" />
               </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-surface-low border border-border-subtle">
+              <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                <input id="set-geolock-unlocked" type="checkbox"
+                  class="mt-0.5 w-4 h-4 rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
+                <div>
+                  <div class="text-xs font-semibold text-navy-deep">Buka Kunci Geo-Lock Global (Izinkan WFO Dari Mana Saja)</div>
+                  <div class="text-[11px] text-text-muted">Jika dicentang, seluruh pegawai dapat absen WFO dari lokasi mana pun namun koordinat GPS asli tetap terbaca &amp; dicatat.</div>
+                </div>
+              </label>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

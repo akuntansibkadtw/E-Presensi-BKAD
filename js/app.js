@@ -55,7 +55,17 @@
       faceApiLoading: false,
       liveCamScanTimer: null,
       liveCamAutoInFlight: false,
-      liveCamAutoSubmitted: false
+      liveCamAutoSubmitted: false,
+      realGpsLat: null,
+      realGpsLng: null,
+      realGpsReady: false,
+      realGpsError: '',
+      geoLockUnlocked: false,
+      gpsMapInstance: null,
+      gpsMapUserMarker: null,
+      gpsMapOfficeMarker: null,
+      gpsMapRadiusCircle: null,
+      gpsMapAccCircle: null
     };
 
     /* -------------------------------------------------------------------
@@ -391,19 +401,20 @@
         var db = loadLocalDB();
         var wit = getClientWITNow();
         var geo = db.settings.GEOFENCE_COORDINATES.value;
+        var peg = db.pegawai.filter(function (p) { return p.nip === payload.nip; })[0] || { nama: 'ASN BKAD', bidang: '-', peran: 'Pegawai' };
+        var isUnlocked = !!(geo && geo.geoLockUnlocked === true) || !!(payload.unlockGeoLock === true && (peg.peran === 'Super Admin' || peg.peran === 'Kepala Badan'));
         var maxAcc = geo.maxGpsAccuracyMeter || 50;
         var gpsAcc = (payload.accuracy !== undefined && payload.accuracy !== null && payload.accuracy !== '') ? parseFloat(payload.accuracy) : 0;
-        if (!isNaN(gpsAcc) && gpsAcc > maxAcc) {
+        if (!isUnlocked && !isNaN(gpsAcc) && gpsAcc > maxAcc) {
           return { ok: false, error: 'Sinyal GPS Lemah (Akurasi ' + Math.round(gpsAcc) + 'm > batas ' + maxAcc + 'm). Silakan pindah ke area terbuka.' };
         }
         var jarak = haversineMeters(payload.lat, payload.lng, geo.lat, geo.lng);
-        if (payload.modeKerja === 'WFO' && jarak > geo.radiusMeter) {
+        if (!isUnlocked && payload.modeKerja === 'WFO' && jarak > geo.radiusMeter) {
           return { ok: false, error: 'Geo-Lock Ditolak: Jarak Anda ' + jarak + 'm dari Kantor BKAD Rasiei (batas maksimal ' + geo.radiusMeter + 'm).' };
         }
         if (payload.faceVerified === false) {
           return { ok: false, error: 'Verifikasi Biometrik Wajah (Face Recognition) belum lulus atau tidak cocok dengan pemilik NIP.' };
         }
-        var peg = db.pegawai.filter(function (p) { return p.nip === payload.nip; })[0] || { nama: 'ASN BKAD', bidang: '-' };
         if (payload.jenisAbsen === 'PULANG') {
           for (var i = 0; i < db.presensi.length; i++) {
             if (db.presensi[i].nip === payload.nip && db.presensi[i].tanggal === wit.tanggal) {
@@ -1367,6 +1378,13 @@
       document.getElementById('mobile-overflow-drawer').classList.add('hidden');
       if (tabId === 'kamera') {
         loadFaceApiLibrary();
+        refreshDeviceGps({ silent: true });
+        setTimeout(function () {
+          updateMobileGpsUI();
+          if (AppCache.gpsMapInstance && AppCache.gpsMapInstance.invalidateSize) {
+            AppCache.gpsMapInstance.invalidateSize();
+          }
+        }, 120);
       } else {
         stopLiveCamStream();
       }
@@ -7338,6 +7356,8 @@
       document.getElementById('set-lat').value = geo.lat;
       document.getElementById('set-lng').value = geo.lng;
       document.getElementById('set-radius').value = geo.radiusMeter;
+      var chkGeoUnlock = document.getElementById('set-geolock-unlocked');
+      if (chkGeoUnlock) chkGeoUnlock.checked = !!(geo && geo.geoLockUnlocked === true);
       document.getElementById('set-jam-masuk').value = jam.masuk;
       document.getElementById('set-jam-pulang').value = jam.pulangSeninKamis;
       document.getElementById('set-tarif-tpp').value = gw.tarifPotonganTppPerMenit;
@@ -7798,6 +7818,221 @@
       } catch (e) {}
     }
 
+    function getOfficeGeoConfig() {
+      var g = (AppCache.settings && AppCache.settings.GEOFENCE_COORDINATES && AppCache.settings.GEOFENCE_COORDINATES.value) || {};
+      return {
+        lat: typeof g.lat === 'number' ? g.lat : (parseFloat(g.lat) || -2.7238),
+        lng: typeof g.lng === 'number' ? g.lng : (parseFloat(g.lng) || 134.5042),
+        radiusMeter: parseInt(g.radiusMeter, 10) || 150,
+        maxGpsAccuracyMeter: parseInt(g.maxGpsAccuracyMeter, 10) || 50,
+        lokasi: g.lokasi || 'Kantor BKAD Kab. Teluk Wondama',
+        geoLockUnlocked: g.geoLockUnlocked === true
+      };
+    }
+
+    function canCurrentUserUnlockGeoLock() {
+      var u = AppCache.currentUser;
+      return !!(u && (u.peran === 'Super Admin' || u.peran === 'Kepala Badan'));
+    }
+
+    function isGeoLockUnlocked() {
+      var geo = getOfficeGeoConfig();
+      if (geo.geoLockUnlocked) return true;
+      return !!(AppCache.geoLockUnlocked && canCurrentUserUnlockGeoLock());
+    }
+
+    function updateMobileGpsMap() {
+      var mapEl = document.getElementById('mob-gps-map');
+      if (!mapEl) return;
+      var geo = getOfficeGeoConfig();
+      var hasUser = !!(AppCache.realGpsReady && AppCache.realGpsLat !== null && AppCache.realGpsLng !== null);
+      var uLat = hasUser ? AppCache.realGpsLat : geo.lat;
+      var uLng = hasUser ? AppCache.realGpsLng : geo.lng;
+
+      if (typeof window.L === 'undefined' || !window.L.map) {
+        var dLat = 0.004;
+        var dLng = 0.004;
+        var bbox = (uLng - dLng).toFixed(5) + '%2C' + (uLat - dLat).toFixed(5) + '%2C' + (uLng + dLng).toFixed(5) + '%2C' + (uLat + dLat).toFixed(5);
+        mapEl.innerHTML = '<iframe title="Peta Lokasi GPS" class="w-full h-full border-0" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + uLat.toFixed(5) + '%2C' + uLng.toFixed(5) + '"></iframe>';
+        return;
+      }
+
+      if (!AppCache.gpsMapInstance) {
+        mapEl.innerHTML = '';
+        var map = window.L.map(mapEl, { zoomControl: true, attributionControl: false });
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        AppCache.gpsMapInstance = map;
+      }
+
+      var m = AppCache.gpsMapInstance;
+      if (AppCache.gpsMapOfficeMarker) m.removeLayer(AppCache.gpsMapOfficeMarker);
+      if (AppCache.gpsMapRadiusCircle) m.removeLayer(AppCache.gpsMapRadiusCircle);
+      if (AppCache.gpsMapUserMarker) m.removeLayer(AppCache.gpsMapUserMarker);
+      if (AppCache.gpsMapAccCircle) m.removeLayer(AppCache.gpsMapAccCircle);
+
+      AppCache.gpsMapOfficeMarker = window.L.circleMarker([geo.lat, geo.lng], {
+        radius: 7,
+        color: '#0B3D91',
+        fillColor: '#1E6BFF',
+        fillOpacity: 0.95,
+        weight: 2
+      }).addTo(m).bindPopup('<b>Kantor BKAD</b><br/>Radius Geo-Lock: ' + geo.radiusMeter + 'm');
+
+      AppCache.gpsMapRadiusCircle = window.L.circle([geo.lat, geo.lng], {
+        radius: geo.radiusMeter,
+        color: '#1E6BFF',
+        fillColor: '#1E6BFF',
+        fillOpacity: 0.12,
+        weight: 1.5,
+        dashArray: '5, 5'
+      }).addTo(m);
+
+      if (hasUser) {
+        var dist = haversineMeters(uLat, uLng, geo.lat, geo.lng);
+        var inside = dist <= geo.radiusMeter;
+        var unlocked = isGeoLockUnlocked();
+        var userColor = (inside || unlocked) ? '#16A34A' : '#EF4444';
+
+        AppCache.gpsMapAccCircle = window.L.circle([uLat, uLng], {
+          radius: Math.min(500, Math.max(5, Number(AppCache.lastGpsAccuracy || 15))),
+          color: userColor,
+          fillColor: userColor,
+          fillOpacity: 0.12,
+          weight: 1
+        }).addTo(m);
+
+        AppCache.gpsMapUserMarker = window.L.circleMarker([uLat, uLng], {
+          radius: 8,
+          color: '#FFFFFF',
+          fillColor: userColor,
+          fillOpacity: 1,
+          weight: 2.5
+        }).addTo(m).bindPopup('<b>Lokasi Anda</b><br/>' + uLat.toFixed(5) + ', ' + uLng.toFixed(5) + '<br/>Jarak: ' + dist + 'm');
+
+        if (dist > 300) {
+          var bounds = window.L.latLngBounds([[geo.lat, geo.lng], [uLat, uLng]]);
+          m.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 });
+        } else {
+          m.setView([uLat, uLng], 17);
+        }
+      } else {
+        m.setView([geo.lat, geo.lng], 17);
+      }
+
+      setTimeout(function () {
+        if (AppCache.gpsMapInstance && AppCache.gpsMapInstance.invalidateSize) {
+          AppCache.gpsMapInstance.invalidateSize();
+        }
+      }, 80);
+    }
+
+    function updateMobileGpsUI() {
+      var geo = getOfficeGeoConfig();
+      var btnGps = document.getElementById('btn-gps-detect');
+      var lblGps = document.getElementById('mob-gps-label');
+      var coordEl = document.getElementById('cam-coord-mono');
+      var distBadge = document.getElementById('mob-gps-distance-badge');
+      var btnLock = document.getElementById('btn-toggle-geolock');
+      var iconLock = document.getElementById('icon-toggle-geolock');
+      var lblLock = document.getElementById('label-toggle-geolock');
+      var unlocked = isGeoLockUnlocked();
+
+      if (btnLock) {
+        if (canCurrentUserUnlockGeoLock()) {
+          btnLock.classList.remove('hidden');
+          if (unlocked) {
+            btnLock.className = 'flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold shadow-sm transition-smooth active:scale-95';
+            if (iconLock) iconLock.textContent = 'lock_open';
+            if (lblLock) lblLock.textContent = geo.geoLockUnlocked ? 'Kunci GPS: TERBUKA (Global)' : 'Kunci GPS: DIBUKA';
+          } else {
+            btnLock.className = 'flex items-center gap-1 px-3 py-1.5 rounded-full bg-navy-deep hover:bg-primary text-white text-[11px] font-semibold shadow-sm transition-smooth active:scale-95';
+            if (iconLock) iconLock.textContent = 'lock';
+            if (lblLock) lblLock.textContent = 'Buka Kunci GPS';
+          }
+        } else if (geo.geoLockUnlocked) {
+          btnLock.className = 'flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-semibold pointer-events-none';
+          if (iconLock) iconLock.textContent = 'lock_open';
+          if (lblLock) lblLock.textContent = 'Geo-Lock Dibuka Admin';
+        } else {
+          btnLock.classList.add('hidden');
+        }
+      }
+
+      if (AppCache.realGpsReady && AppCache.realGpsLat !== null && AppCache.realGpsLng !== null) {
+        var acc = Math.round(Number(AppCache.lastGpsAccuracy || 0));
+        var dist = haversineMeters(AppCache.realGpsLat, AppCache.realGpsLng, geo.lat, geo.lng);
+        var inside = dist <= geo.radiusMeter;
+        if (coordEl) coordEl.textContent = AppCache.realGpsLat.toFixed(5) + ', ' + AppCache.realGpsLng.toFixed(5);
+        if (lblGps) lblGps.textContent = 'GPS Aktif (±' + acc + 'm)';
+        if (btnGps) {
+          btnGps.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm transition-smooth active:scale-95 ' +
+            ((inside || unlocked || AppCache.selectedModeKerja !== 'WFO') ? 'bg-status-present' : 'bg-status-absent');
+        }
+        if (distBadge) {
+          var distTxt = dist >= 1000 ? ((dist / 1000).toFixed(2) + ' km') : (dist + ' m');
+          if (inside) {
+            distBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold';
+            distBadge.textContent = 'Jarak ' + distTxt + ' • Dalam Radius';
+          } else if (unlocked) {
+            distBadge.className = 'px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono text-[10px] font-bold';
+            distBadge.textContent = 'Jarak ' + distTxt + ' • Kunci Dibuka';
+          } else if (AppCache.selectedModeKerja !== 'WFO') {
+            distBadge.className = 'px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 font-mono text-[10px] font-bold';
+            distBadge.textContent = 'Jarak ' + distTxt + ' • Mode ' + AppCache.selectedModeKerja;
+          } else {
+            distBadge.className = 'px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-mono text-[10px] font-bold';
+            distBadge.textContent = 'Jarak ' + distTxt + ' • Luar Radius (' + geo.radiusMeter + 'm)';
+          }
+        }
+      } else {
+        if (coordEl) coordEl.textContent = AppCache.realGpsError || 'Menunggu sinyal GPS HP...';
+        if (lblGps) lblGps.textContent = AppCache.realGpsError ? 'GPS Gagal • Ketuk Coba Lagi' : 'Mencari GPS HP...';
+        if (btnGps) {
+          btnGps.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm transition-smooth active:scale-95 ' +
+            (AppCache.realGpsError ? 'bg-status-absent' : 'bg-amber-500');
+        }
+        if (distBadge) {
+          distBadge.className = 'px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono text-[10px] font-bold';
+          distBadge.textContent = AppCache.realGpsError ? 'GPS Belum Aktif' : 'Mendeteksi...';
+        }
+      }
+
+      updateMobileGpsMap();
+    }
+
+    function refreshDeviceGps(opts) {
+      var silent = !!(opts && opts.silent);
+      var lblGps = document.getElementById('mob-gps-label');
+      if (!silent && lblGps) lblGps.textContent = 'Memindai GPS HP...';
+
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        AppCache.realGpsReady = false;
+        AppCache.realGpsError = 'Perangkat tidak mendukung GPS browser.';
+        updateMobileGpsUI();
+        if (!silent) showToast(AppCache.realGpsError, 'error');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        AppCache.realGpsLat = pos.coords.latitude;
+        AppCache.realGpsLng = pos.coords.longitude;
+        AppCache.lastGpsAccuracy = pos.coords.accuracy || 15;
+        AppCache.realGpsReady = true;
+        AppCache.realGpsError = '';
+        updateMobileGpsUI();
+        if (!silent) {
+          showToast('Koordinat GPS asli diperbarui: ' + AppCache.realGpsLat.toFixed(5) + ', ' + AppCache.realGpsLng.toFixed(5), 'success');
+        }
+      }, function (err) {
+        AppCache.realGpsReady = false;
+        var msg = 'Izin lokasi GPS ditolak atau GPS HP mati.';
+        if (err && err.code === 3) msg = 'Waktu tunggu sinyal GPS habis. Coba di area lebih terbuka.';
+        AppCache.realGpsError = msg;
+        updateMobileGpsUI();
+        if (!silent) showToast(msg, 'error');
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
     function executeSubmitPresensi(btn, opts) {
       var curU = AppCache.currentUser;
       if (!curU) return false;
@@ -7811,23 +8046,36 @@
         showToast('Verifikasi Wajah (Face Recognition) wajib lulus & cocok sebelum mengirim presensi!', 'error');
         return false;
       }
-      var geoCfg = (AppCache.settings.GEOFENCE_COORDINATES && AppCache.settings.GEOFENCE_COORDINATES.value) || { maxGpsAccuracyMeter: 50 };
+      if (!AppCache.realGpsReady || AppCache.realGpsLat === null || AppCache.realGpsLng === null) {
+        if (opts && opts.fromAutoCam) stopLiveCamStream();
+        showToast('Lokasi GPS asli HP belum terbaca! Aktifkan GPS HP & izinkan akses lokasi, lalu ketuk tombol GPS di atas.', 'error');
+        refreshDeviceGps({ showFeedback: true });
+        return false;
+      }
+      var geoCfg = getOfficeGeoConfig();
+      var unlocked = isGeoLockUnlocked();
       var maxAcc = geoCfg.maxGpsAccuracyMeter || 50;
-      var curAcc = Number(AppCache.lastGpsAccuracy || 8);
-      if (curAcc > maxAcc) {
+      var curAcc = Number(AppCache.lastGpsAccuracy || 15);
+      if (!unlocked && curAcc > maxAcc) {
         if (opts && opts.fromAutoCam) stopLiveCamStream();
         showToast('Sinyal GPS Lemah (Akurasi ' + Math.round(curAcc) + 'm > ' + maxAcc + 'm). Silakan pindah ke area terbuka.', 'error');
         return false;
       }
-      var coords = document.getElementById('mob-gps-preset').value.split(',');
+      var distMeters = haversineMeters(AppCache.realGpsLat, AppCache.realGpsLng, geoCfg.lat, geoCfg.lng);
+      if (!unlocked && AppCache.selectedModeKerja === 'WFO' && distMeters > geoCfg.radiusMeter) {
+        if (opts && opts.fromAutoCam) stopLiveCamStream();
+        showToast('Geo-Lock Ditolak: Posisi Anda berjarak ' + distMeters + 'm dari Kantor BKAD Rasiei (batas ' + geoCfg.radiusMeter + 'm).', 'error');
+        return false;
+      }
       var ket = document.getElementById('cam-keterangan-input').value;
       var absenPayload = {
         nip: AppCache.currentUser.nip,
         modeKerja: AppCache.selectedModeKerja,
         jenisAbsen: AppCache.selectedJenisAbsen,
-        lat: parseFloat(coords[0]),
-        lng: parseFloat(coords[1]),
+        lat: AppCache.realGpsLat,
+        lng: AppCache.realGpsLng,
         accuracy: curAcc,
+        unlockGeoLock: unlocked,
         fotoData: AppCache.capturedFotoData,
         keterangan: ket,
         faceVerified: AppCache.faceVerified,
@@ -9221,22 +9469,31 @@
       } else if (action === 'set-work-mode') {
         AppCache.selectedModeKerja = id;
         renderMobileShell();
+        updateMobileGpsUI();
         showToast('Mode kerja aktif diubah ke ' + id, 'success');
       } else if (action === 'open-camera-absen') {
         AppCache.selectedJenisAbsen = id;
         switchMobTab('kamera');
       } else if (action === 'detect-gps') {
-        var sel = document.getElementById('mob-gps-preset');
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(function (pos) {
-            document.getElementById('cam-coord-mono').textContent = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
-            document.getElementById('mob-gps-label').textContent = 'GPS Akurat (' + Math.round(pos.coords.accuracy) + 'm)';
-            showToast('Koordinat GPS perangkat berhasil diperbarui.', 'success');
-          }, function () {
-            document.getElementById('cam-coord-mono').textContent = sel.value.replace(',', ', ');
-            showToast('Menggunakan koordinat preset Rasiei/SPT.', 'warn');
-          }, { timeout: 3000 });
+        refreshDeviceGps({ silent: false });
+      } else if (action === 'toggle-geolock') {
+        if (!canCurrentUserUnlockGeoLock()) {
+          showToast('Hanya Super Admin / Kepala Badan yang dapat membuka kunci Geo-Lock.', 'error');
+          return;
         }
+        var gCfg = getOfficeGeoConfig();
+        if (gCfg.geoLockUnlocked) {
+          showToast('Geo-Lock sedang dibuka secara global melalui Pengaturan Sistem.', 'info');
+          return;
+        }
+        AppCache.geoLockUnlocked = !AppCache.geoLockUnlocked;
+        updateMobileGpsUI();
+        showToast(
+          AppCache.geoLockUnlocked
+            ? 'Kunci GPS dibuka untuk sesi ini: Anda dapat absen dari lokasi mana pun (koordinat asli tetap dicatat).'
+            : 'Kunci GPS diaktifkan kembali (wajib di dalam radius kantor).',
+          AppCache.geoLockUnlocked ? 'warning' : 'success'
+        );
       } else if (action === 'start-webcam') {
         loadFaceApiLibrary();
         stopLiveCamStream();
@@ -9751,12 +10008,16 @@
     document.getElementById('settings-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var btn = document.getElementById('btn-save-settings');
+      var prevGeo = getOfficeGeoConfig();
+      var chkUnlock = document.getElementById('set-geolock-unlocked');
       var payload = {
         GEOFENCE_COORDINATES: {
           lat: parseFloat(document.getElementById('set-lat').value),
           lng: parseFloat(document.getElementById('set-lng').value),
           radiusMeter: parseInt(document.getElementById('set-radius').value, 10),
-          lokasi: 'Kompleks Perkantoran Pemkab Rasiei / Isei 98362'
+          maxGpsAccuracyMeter: prevGeo.maxGpsAccuracyMeter || 50,
+          lokasi: prevGeo.lokasi || 'Kompleks Perkantoran Pemkab Rasiei / Isei 98362',
+          geoLockUnlocked: !!(chkUnlock && chkUnlock.checked)
         },
         JAM_KERJA_WIT: {
           masuk: document.getElementById('set-jam-masuk').value,
@@ -9779,13 +10040,17 @@
       };
       callServer('apiSaveSettings', payload, btn, function (res) {
         AppCache.settings = res.settings;
+        updateMobileGpsUI();
         showToast(res.message, 'success');
       });
     });
 
-    document.getElementById('mob-gps-preset').addEventListener('change', function (e) {
-      document.getElementById('cam-coord-mono').textContent = e.target.value.replace(',', ', ');
-    });
+    var mobGpsPresetEl = document.getElementById('mob-gps-preset');
+    if (mobGpsPresetEl) {
+      mobGpsPresetEl.addEventListener('change', function (e) {
+        document.getElementById('cam-coord-mono').textContent = e.target.value.replace(',', ', ');
+      });
+    }
 
     document.getElementById('cam-native-input').addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];

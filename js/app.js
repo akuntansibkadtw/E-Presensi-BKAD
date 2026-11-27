@@ -3825,7 +3825,7 @@
         '</div>' +
         '</div>' +
         '<input id="mp-peg-search" type="search" placeholder="Cari nama pegawai, NIP, atau bidang..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-border-subtle text-xs" />' +
-        '<div class="max-h-72 overflow-y-auto bg-white rounded-xl border border-border-subtle p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 content-start">' + (pegHtml || '<div class="col-span-full p-3 text-center text-[11px] text-text-muted">Data pegawai kosong.</div>') + '</div>' +
+        '<div style="max-height:320px;" class="overflow-y-auto bg-white rounded-xl border border-border-subtle p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 content-start">' + (pegHtml || '<div class="col-span-full p-3 text-center text-[11px] text-text-muted">Data pegawai kosong.</div>') + '</div>' +
         '</div>' +
         '<div class="p-3 rounded-2xl bg-surface-low border border-border-subtle space-y-2.5">' +
         '<div class="text-[11px] font-bold uppercase tracking-wide text-navy-deep">2. Periode Tanggal Absen (Mulai Januari / Rentang Hari)</div>' +

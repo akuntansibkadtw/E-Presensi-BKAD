@@ -3803,11 +3803,11 @@
         var sBlob = [pg.nama, pg.nip, pg.jabatan, pg.bidang].join(' ').toLowerCase();
         var nipClean = String(pg.nip || '').replace(/\s+/g, '');
         var isMe = curNipClean && nipClean === curNipClean;
-        pegHtml += '<label class="mp-peg-item flex items-start gap-2.5 px-2.5 py-2 rounded-xl hover:bg-blue-50/70 cursor-pointer border border-transparent hover:border-blue-100" data-search="' + esc(sBlob) + '">' +
-          '<input type="checkbox" class="mp-peg-cb mt-0.5 rounded border-slate-300 text-navy-deep focus:ring-electric-blue" value="' + esc(nipClean) + '" data-nama="' + esc(pg.nama) + '" data-bidang="' + esc(pg.bidang || '') + '"' + (isMe ? ' checked' : '') + ' />' +
+        pegHtml += '<label class="mp-peg-item flex items-start gap-2 px-2.5 py-1.5 rounded-xl bg-surface-low/40 hover:bg-blue-50/80 cursor-pointer border border-border-subtle/60 hover:border-blue-200 transition-smooth" data-search="' + esc(sBlob) + '">' +
+          '<input type="checkbox" class="mp-peg-cb mt-0.5 rounded border-slate-300 text-navy-deep focus:ring-electric-blue shrink-0" value="' + esc(nipClean) + '" data-nama="' + esc(pg.nama) + '" data-bidang="' + esc(pg.bidang || '') + '"' + (isMe ? ' checked' : '') + ' />' +
           '<div class="min-w-0 flex-1">' +
-          '<div class="text-xs font-bold text-text-main leading-tight">' + esc(pg.nama) + '</div>' +
-          '<div class="text-[11px] text-text-muted leading-tight mt-0.5">' + esc(pg.bidang || '-') + ' • <span class="font-mono">' + esc(pg.nip) + '</span></div>' +
+          '<div class="text-xs font-bold text-text-main leading-tight truncate">' + esc(pg.nama) + '</div>' +
+          '<div class="text-[10.5px] text-text-muted leading-tight mt-0.5 truncate">' + esc(pg.bidang || '-') + ' • <span class="font-mono">' + esc(pg.nip) + '</span></div>' +
           '</div>' +
           '</label>';
       }
@@ -3825,7 +3825,7 @@
         '</div>' +
         '</div>' +
         '<input id="mp-peg-search" type="search" placeholder="Cari nama pegawai, NIP, atau bidang..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-border-subtle text-xs" />' +
-        '<div class="max-h-36 overflow-y-auto bg-white rounded-xl border border-border-subtle p-1.5 space-y-1">' + (pegHtml || '<div class="p-3 text-center text-[11px] text-text-muted">Data pegawai kosong.</div>') + '</div>' +
+        '<div class="max-h-72 overflow-y-auto bg-white rounded-xl border border-border-subtle p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 content-start">' + (pegHtml || '<div class="col-span-full p-3 text-center text-[11px] text-text-muted">Data pegawai kosong.</div>') + '</div>' +
         '</div>' +
         '<div class="p-3 rounded-2xl bg-surface-low border border-border-subtle space-y-2.5">' +
         '<div class="text-[11px] font-bold uppercase tracking-wide text-navy-deep">2. Periode Tanggal Absen (Mulai Januari / Rentang Hari)</div>' +

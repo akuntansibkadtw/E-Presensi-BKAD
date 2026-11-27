@@ -3812,8 +3812,9 @@
           '</label>';
       }
 
-      var yrNow = new Date().getFullYear();
-      var defaultJanStart = yrNow + '-01-05';
+      var witNow = getClientWITNow();
+      var witParts = witNow.tanggal.split('/');
+      var defaultTodayIso = witParts[2] + '-' + witParts[1] + '-' + witParts[0];
       var body = '<form id="form-manual-presensi" action="javascript:void(0);" class="space-y-3.5">' +
         '<div class="p-3 rounded-2xl bg-surface-low border border-border-subtle space-y-2">' +
         '<div class="flex flex-wrap items-center justify-between gap-2">' +
@@ -3829,8 +3830,8 @@
         '<div class="p-3 rounded-2xl bg-surface-low border border-border-subtle space-y-2.5">' +
         '<div class="text-[11px] font-bold uppercase tracking-wide text-navy-deep">2. Periode Tanggal Absen (Mulai Januari / Rentang Hari)</div>' +
         '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">' +
-        '<div><label class="block text-[11px] font-semibold text-text-muted mb-1">Tanggal Mulai</label><input id="mp-tgl-mulai" type="date" required value="' + esc(defaultJanStart) + '" class="w-full px-3 py-2 rounded-xl bg-white border border-border-subtle text-xs" /></div>' +
-        '<div><label class="block text-[11px] font-semibold text-text-muted mb-1">Tanggal Selesai</label><input id="mp-tgl-selesai" type="date" required value="' + esc(defaultJanStart) + '" class="w-full px-3 py-2 rounded-xl bg-white border border-border-subtle text-xs" /></div>' +
+        '<div><label class="block text-[11px] font-semibold text-text-muted mb-1">Tanggal Mulai</label><input id="mp-tgl-mulai" type="date" required value="' + esc(defaultTodayIso) + '" class="w-full px-3 py-2 rounded-xl bg-white border border-border-subtle text-xs" /></div>' +
+        '<div><label class="block text-[11px] font-semibold text-text-muted mb-1">Tanggal Selesai</label><input id="mp-tgl-selesai" type="date" required value="' + esc(defaultTodayIso) + '" class="w-full px-3 py-2 rounded-xl bg-white border border-border-subtle text-xs" /></div>' +
         '</div>' +
         '<div class="flex flex-wrap items-center justify-between gap-2 text-xs">' +
         '<label class="inline-flex items-center gap-2 cursor-pointer select-none"><input id="mp-skip-weekend" type="checkbox" checked class="rounded border-slate-300 text-electric-blue" /><span>Lewati hari Sabtu &amp; Minggu</span></label>' +
@@ -3954,8 +3955,12 @@
       for (var ci = 0; ci < allMpCbs.length; ci++) {
         allMpCbs[ci].addEventListener('change', refreshManualSummary);
       }
+      var prevStartVal = defaultTodayIso;
       tMulaiEl.addEventListener('change', function () {
-        if (tSelesaiEl.value < tMulaiEl.value) tSelesaiEl.value = tMulaiEl.value;
+        if (tSelesaiEl.value < tMulaiEl.value || tSelesaiEl.value === prevStartVal) {
+          tSelesaiEl.value = tMulaiEl.value;
+        }
+        prevStartVal = tMulaiEl.value;
         refreshManualSummary();
       });
       tSelesaiEl.addEventListener('change', refreshManualSummary);

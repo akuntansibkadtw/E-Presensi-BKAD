@@ -9686,7 +9686,7 @@
       } else if (action === 'open-manual-presensi-modal') {
         openManualPresensiModal();
       } else if (action === 'goto-impor-presensi') {
-        switchDeskMenu('rekonsiliasi-absen');
+        switchDeskMenu('rekap-presensi');
       } else if (action === 'execute-import-presensi') {
         executePendingPresensiImport(btn);
       } else if (action === 'clear-import-presensi-preview') {

@@ -1174,68 +1174,21 @@
         <div id="menu-rekonsiliasi-absen" class="hidden desk-panel space-y-5">
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
-              <h2 class="text-xl font-bold text-navy-deep">Input Manual &amp; Impor Presensi Retroaktif (Mulai Januari)
-              </h2>
-              <p class="text-xs text-text-muted">Unduh templat Excel presensi, impor massal data absen sejak Januari ke
-                database, dan selesaikan Berita Acara rekonsiliasi TPP</p>
+              <h2 class="text-xl font-bold text-navy-deep">Rekonsiliasi Presensi &amp; Berita Acara TPP</h2>
+              <p class="text-xs text-text-muted">Validasi anomali kehadiran bulanan, resolusi potongan TPP, dan
+                penguncian Berita Acara (BA) Rekonsiliasi</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button type="button" data-action="open-manual-presensi-modal"
                 class="px-3.5 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
                 <span class="material-symbols-outlined text-[17px]">edit_calendar</span>
-                <span>Input Absen Manual / Rentang Tgl</span>
+                <span>Input Absen Manual</span>
               </button>
-              <button type="button" data-action="download-rekon-template-xls"
-                class="px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
-                <span class="material-symbols-outlined text-[17px]">table_view</span>
-                <span>Unduh Templat Excel (.xls)</span>
+              <button type="button" data-action="goto-impor-presensi"
+                class="px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-mode-wfa text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">upload_file</span>
+                <span>Impor Excel di Rekapitulasi</span>
               </button>
-              <button type="button" data-action="download-rekon-template"
-                class="px-3 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
-                <span class="material-symbols-outlined text-[17px]">download</span>
-                <span>Unduh Templat CSV</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Kartu Unggah Excel & Tempel Data Absen Mulai Januari -->
-          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div>
-                <h3 class="text-sm font-bold text-navy-deep">Impor Massal Log Presensi (.XLS / .XLSX / .CSV) — Periode
-                  Mulai Januari</h3>
-                <p class="text-xs text-text-muted mt-0.5">Kolom NIP &amp; Tanggal di templat Excel sudah terkunci format
-                  Teks agar data Januari s.d. bulan berjalan aman diimpor ke LogPresensi.</p>
-              </div>
-              <button type="button" data-action="open-pedoman-impor-presensi"
-                class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-navy-deep text-xs font-semibold flex items-center gap-1.5 self-start lg:self-auto transition-smooth">
-                <span class="material-symbols-outlined text-[17px]">content_paste_go</span>
-                <span>Pedoman &amp; Tempel dari Excel</span>
-              </button>
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <input id="import-presensi-file" type="file" accept=".xls,.xlsx,.csv,.txt,.tsv"
-                  class="text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-navy-deep file:font-semibold hover:file:bg-blue-100 cursor-pointer" />
-                <span class="text-[11px] text-text-muted">Format: <span
-                    class="font-mono font-semibold text-navy-deep">.xls</span>, <span
-                    class="font-mono font-semibold text-navy-deep">.xlsx</span>, <span
-                    class="font-mono font-semibold text-navy-deep">.csv</span></span>
-              </div>
-              <div class="flex flex-wrap items-center gap-3">
-                <label class="inline-flex items-center gap-2 text-xs text-text-main cursor-pointer select-none">
-                  <input id="chk-import-presensi-upsert" type="checkbox" checked
-                    class="rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
-                  <span>Perbarui otomatis jika NIP &amp; Tanggal sudah tercatat</span>
-                </label>
-                <button type="button" data-action="process-presensi-file"
-                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[17px]">upload_file</span>
-                  <span>Proses &amp; Impor Berkas Presensi</span>
-                </button>
-              </div>
-            </div>
-            <div id="import-presensi-preview-box" class="hidden mt-3 pt-4 border-t border-border-subtle space-y-3">
             </div>
           </div>
 
@@ -1392,10 +1345,16 @@
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
               <h2 class="text-xl font-bold text-navy-deep">Rekapitulasi Kehadiran & Perhitungan TPP</h2>
-              <p class="text-xs text-text-muted">Laporan periodik harian, bulanan, semesteran, dan tahunan berdasarkan
-                Hari Kerja Efektif (dikurangi Libur Nasional, Cuti Bersama & Libur Fakultatif)</p>
+              <p class="text-xs text-text-muted">Input absen manual, impor Excel/CSV sejak Januari, serta laporan
+                periodik berdasarkan Hari Kerja Efektif (dikurangi Libur Nasional, Cuti Bersama &amp; Libur Fakultatif)
+              </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-action="open-manual-presensi-modal"
+                class="px-3.5 py-2 rounded-xl bg-electric-blue hover:bg-navy-deep text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">edit_calendar</span>
+                <span>Input Absen Manual / Rentang Tgl</span>
+              </button>
               <button type="button" data-action="open-hari-libur-modal"
                 class="px-3.5 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm">
                 <span class="material-symbols-outlined text-[17px] text-amber-600">event_busy</span>
@@ -1411,6 +1370,11 @@
                 <span class="material-symbols-outlined text-[17px]">table_view</span>
                 <span>Unduh Templat Impor Presensi (.xls)</span>
               </button>
+              <button type="button" data-action="download-rekon-template"
+                class="px-3.5 py-2 rounded-xl bg-white border border-border-subtle hover:bg-surface-low text-navy-deep text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[17px]">download</span>
+                <span>Unduh Templat CSV</span>
+              </button>
               <button type="button" data-action="export-rekap-csv"
                 class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[17px]">table_view</span>
@@ -1421,6 +1385,47 @@
                 <span class="material-symbols-outlined text-[17px]">print</span>
                 <span>Cetak Rekap A4</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Kartu Unggah Excel & Tempel Data Absen Mulai Januari -->
+          <div class="card-elevated rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-bold text-navy-deep">Impor Massal Log Presensi (.XLS / .XLSX / .CSV) — Periode
+                  Mulai Januari</h3>
+                <p class="text-xs text-text-muted mt-0.5">Unggah berkas templat Excel atau tempel langsung dari Excel
+                  agar data Januari s.d. bulan berjalan otomatis masuk ke Rekapitulasi &amp; Database.</p>
+              </div>
+              <button type="button" data-action="open-pedoman-impor-presensi"
+                class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-navy-deep text-xs font-semibold flex items-center gap-1.5 self-start lg:self-auto transition-smooth">
+                <span class="material-symbols-outlined text-[17px]">content_paste_go</span>
+                <span>Pedoman &amp; Tempel dari Excel</span>
+              </button>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <input id="import-presensi-file" type="file" accept=".xls,.xlsx,.csv,.txt,.tsv"
+                  class="text-xs text-text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-navy-deep file:font-semibold hover:file:bg-blue-100 cursor-pointer" />
+                <span class="text-[11px] text-text-muted">Format: <span
+                    class="font-mono font-semibold text-navy-deep">.xls</span>, <span
+                    class="font-mono font-semibold text-navy-deep">.xlsx</span>, <span
+                    class="font-mono font-semibold text-navy-deep">.csv</span></span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="inline-flex items-center gap-2 text-xs text-text-main cursor-pointer select-none">
+                  <input id="chk-import-presensi-upsert" type="checkbox" checked
+                    class="rounded border-slate-300 text-electric-blue focus:ring-electric-blue" />
+                  <span>Perbarui otomatis jika NIP &amp; Tanggal sudah tercatat</span>
+                </label>
+                <button type="button" data-action="process-presensi-file"
+                  class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[17px]">upload_file</span>
+                  <span>Proses &amp; Impor Berkas Presensi</span>
+                </button>
+              </div>
+            </div>
+            <div id="import-presensi-preview-box" class="hidden mt-3 pt-4 border-t border-border-subtle space-y-3">
             </div>
           </div>
 
